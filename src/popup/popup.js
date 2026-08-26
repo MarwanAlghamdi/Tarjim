@@ -101,7 +101,7 @@ el.go.addEventListener('click', async () => {
 async function reportGpuOffload(settings) {
   const loaded = await listLoadedModels(settings.endpoint);
   const mine = loaded.find((m) => m.name === settings.model);
-  if (!mine) return; /* MUT: guard removed -> always warn */
+  if (!mine || !mine.mostlyOnCpu) return;
 
   const onGpu = Math.round(mine.gpuFraction * 100);
   el.perfWarning.hidden = false;
