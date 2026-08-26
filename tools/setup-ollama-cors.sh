@@ -7,6 +7,11 @@
 # unit WITHOUT touching the existing OLLAMA_HOST drop-in.
 set -euo pipefail
 
+# systemctl pipes into a pager when stdout is a TTY, which makes this script
+# look like it has hung. Disable it for every systemctl call below.
+export SYSTEMD_PAGER=cat
+export SYSTEMD_COLORS=0
+
 ORIGINS="${OLLAMA_ORIGINS_VALUE:-*}"
 DROPIN_DIR=/etc/systemd/system/ollama.service.d
 DROPIN=$DROPIN_DIR/20-origins.conf
@@ -25,8 +30,8 @@ EOF
 echo "Wrote $DROPIN:"
 cat "$DROPIN"
 
-systemctl daemon-reload
-systemctl restart ollama
+systemctl --no-pager daemon-reload
+systemctl --no-pager restart ollama
 
 for _ in $(seq 1 20); do
   curl -sf -o /dev/null http://localhost:11434/api/version && break
@@ -35,7 +40,7 @@ done
 
 echo
 echo "Effective environment:"
-systemctl show ollama --property=Environment
+systemctl --no-pager show ollama --property=Environment | tr ' ' '\n' | grep -i OLLAMA_ || true
 
 echo
 echo -n "Verification (expect 200, was 403): "
