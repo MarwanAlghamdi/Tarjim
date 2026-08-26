@@ -23,7 +23,13 @@ function tokensFor(prompt) {
   return ['ترجمة', ' تجريبية', ` (${String(prompt).trim().slice(0, 12)})`];
 }
 
-export function createOllamaStub({ port = 0, delayMs = 5 } = {}) {
+/**
+ * @param {object}  opts
+ * @param {boolean} opts.cpuOffload  report the model as mostly evicted to CPU,
+ *                                   which is what Ollama does when a model does
+ *                                   not fit in free VRAM.
+ */
+export function createOllamaStub({ port = 0, delayMs = 5, cpuOffload = false } = {}) {
   // Every /api/generate body, so tests can assert exactly what was requested
   // (a preload has no `prompt`; a real translation does).
   const calls = [];
@@ -39,6 +45,19 @@ export function createOllamaStub({ port = 0, delayMs = 5 } = {}) {
     if (req.method === 'GET' && req.url === '/api/tags') {
       res.writeHead(200, { ...cors(origin), 'Content-Type': 'application/json' });
       return res.end(JSON.stringify(TAGS));
+    }
+
+    if (req.method === 'GET' && req.url === '/api/ps') {
+      res.writeHead(200, { ...cors(origin), 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({
+        models: [{
+          name: 'gemma3:12b',
+          model: 'gemma3:12b',
+          size: 8_900_000_000,
+          size_vram: cpuOffload ? 100_000_000 : 8_900_000_000,
+          context_length: 8192,
+        }],
+      }));
     }
 
     if (req.method === 'POST' && req.url === '/api/generate') {

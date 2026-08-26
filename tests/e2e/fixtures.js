@@ -42,8 +42,11 @@ async function serviceWorker(context) {
 }
 
 export const test = base.extend({
-  stub: async ({}, use) => {
-    const server = await createOllamaStub({ port: 0 });
+  // Override in a test file with `test.use({ cpuOffload: true })`.
+  cpuOffload: [false, { option: true }],
+
+  stub: async ({ cpuOffload }, use) => {
+    const server = await createOllamaStub({ port: 0, cpuOffload });
     await use({ server, url: `http://127.0.0.1:${server.address().port}` });
     await new Promise((r) => server.close(r));
   },

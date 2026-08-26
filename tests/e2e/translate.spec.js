@@ -97,3 +97,17 @@ test('Escape closes the panel', async ({ context, fixtureUrl }) => {
   await page.keyboard.press('Escape');
   await expect(root.locator('.panel')).toBeHidden();
 });
+
+test.describe('when the model does not fit in VRAM', () => {
+  test.use({ cpuOffload: true });
+
+  test('the popup warns that the model is running on the CPU', async ({ context, extensionId }) => {
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/src/popup/popup.html`);
+
+    const warning = page.locator('#perf-warning');
+    await expect(warning).toBeVisible();
+    await expect(warning).toContainText('on the GPU');
+    await expect(warning).toContainText('mostly on the CPU');
+  });
+});

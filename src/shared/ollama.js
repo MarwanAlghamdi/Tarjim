@@ -73,6 +73,45 @@ export async function listModels(endpoint) {
 }
 
 /**
+ * GET /api/ps -- which models are resident, and how much of each is actually
+ * on the GPU.
+ *
+ * This exists because a model that does not fit in free VRAM is silently
+ * offloaded to CPU by Ollama and runs 10-30x slower, with no error anywhere.
+ * Observed on this machine: another process held 14.4 GB of a 16 GB card, so
+ * gemma3:12b loaded with 0.1 GB of 8.9 GB on the GPU and a one-sentence
+ * translation took 33 seconds instead of 2. Surfacing it turns a "the
+ * extension is broken" report into "something else is using your GPU".
+ *
+ * Purely diagnostic, so it never throws.
+ */
+export async function listLoadedModels(endpoint) {
+  try {
+    const res = await fetch(`${normalizeEndpoint(endpoint)}/api/ps`);
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    return (data.models ?? []).map((m) => {
+      const size = m.size ?? 0;
+      const sizeVram = m.size_vram ?? 0;
+      const gpuFraction = size > 0 ? sizeVram / size : 1;
+      return {
+        name: m.name,
+        size,
+        sizeVram,
+        gpuFraction,
+        contextLength: m.context_length,
+        expiresAt: m.expires_at,
+        // Below half on the GPU is where the slowdown becomes obvious.
+        mostlyOnCpu: size > 0 && gpuFraction < 0.5,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Fire-and-forget model load.
  *
  * Never throws: it is called speculatively (the moment a selection bubble

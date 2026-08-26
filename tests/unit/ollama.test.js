@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ndjsonResponse, jsonResponse } from '../helpers/ndjson.js';
-import { listModels, preloadModel, streamGenerate, OllamaError } from '../../src/shared/ollama.js';
+import { listModels, listLoadedModels, preloadModel, streamGenerate, OllamaError } from '../../src/shared/ollama.js';
 
 const ENDPOINT = 'http://localhost:11434';
 
@@ -107,4 +107,40 @@ describe('preloadModel', () => {
 it('exports an OllamaError carrying a kind', () => {
   expect(new OllamaError('boom', 'offline')).toBeInstanceOf(Error);
   expect(new OllamaError('boom', 'offline').kind).toBe('offline');
+});
+
+describe('listLoadedModels', () => {
+  it('reports the GPU fraction for each resident model', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({
+      models: [
+        { name: 'gemma3:12b', size: 8_900_000_000, size_vram: 100_000_000, context_length: 8192 },
+        { name: 'allam:7b', size: 4_000_000_000, size_vram: 4_000_000_000, context_length: 4096 },
+      ],
+    })));
+
+    const loaded = await listLoadedModels('http://localhost:11434');
+    expect(loaded[0].name).toBe('gemma3:12b');
+    expect(loaded[0].gpuFraction).toBeCloseTo(0.011, 3);
+    expect(loaded[0].mostlyOnCpu).toBe(true);
+    expect(loaded[1].gpuFraction).toBe(1);
+    expect(loaded[1].mostlyOnCpu).toBe(false);
+  });
+
+  it('returns an empty list when nothing is resident', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ models: [] })));
+    expect(await listLoadedModels('http://localhost:11434')).toEqual([]);
+  });
+
+  it('never throws -- it is a diagnostic, not a critical path', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    await expect(listLoadedModels('http://localhost:11434')).resolves.toEqual([]);
+  });
+
+  it('treats a model with unknown size as not CPU-offloaded', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({
+      models: [{ name: 'x:1b', size: 0, size_vram: 0 }],
+    })));
+    const [m] = await listLoadedModels('http://localhost:11434');
+    expect(m.mostlyOnCpu).toBe(false);
+  });
 });

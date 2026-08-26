@@ -31,6 +31,34 @@ test('preflight: Ollama accepts a chrome-extension origin and has the model', as
     .toContain(MODEL);
 });
 
+test('preflight: report how much of the model is on the GPU', async () => {
+  // Load the model, then look at where it actually landed. Ollama offloads to
+  // CPU silently when free VRAM is short, and the only symptom is a 10-30x
+  // slowdown -- which otherwise shows up here as an inexplicable timeout.
+  await fetch(`${ENDPOINT}/api/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: MODEL, keep_alive: '30m' }),
+  });
+
+  const { models } = await (await fetch(`${ENDPOINT}/api/ps`)).json();
+  const mine = models.find((m) => m.name === MODEL);
+  if (!mine) {
+    console.log(`  ${MODEL} is not resident; cannot report GPU split`);
+    return;
+  }
+
+  const pct = mine.size ? (mine.size_vram / mine.size) * 100 : 100;
+  const line = `  ${MODEL}: ${pct.toFixed(1)}% on GPU `
+    + `(${(mine.size_vram / 1e9).toFixed(1)} of ${(mine.size / 1e9).toFixed(1)} GB)`;
+  console.log(line);
+
+  if (pct < 50) {
+    console.log('  WARNING: mostly on CPU. Expect translations to take minutes, not seconds.');
+    console.log('  Check `nvidia-smi` for another process holding VRAM.');
+  }
+});
+
 test('English selection is translated to Arabic by the real model', async ({ context, fixtureUrl }) => {
   const page = await context.newPage();
   await page.goto(fixtureUrl);
