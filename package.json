@@ -1,0 +1,21 @@
+{
+  "name": "ollama-arabic-translator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Translate selected text to Arabic using a local Ollama server.",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "verify": "vitest run && playwright test",
+    "stub": "node tests/stub/ollama-stub.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/chrome": "^0.2.7",
+    "jsdom": "^27.0.0",
+    "vitest": "^4.1.11"
+  }
+}
