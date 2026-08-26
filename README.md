@@ -150,7 +150,15 @@ npm install
 npm test          # unit tests (Vitest)
 npm run test:e2e  # end-to-end tests (Playwright)
 npm run verify    # both
+
+npm run verify:live   # against REAL Ollama (needs step 1 + the model pulled)
+OLLAMA_ENDPOINT=192.168.1.50:11434 OLLAMA_MODEL=iKhalid/ALLaM:7b npm run verify:live
 ```
+
+`verify:live` drives the real extension in a real browser against your actual
+Ollama server: it preflights the CORS fix and the model, then translates
+English and French selections and checks Arabic comes back, and confirms Arabic
+input is passed through without a model call.
 
 No build step: the service worker, options page and popup are native ES
 modules; content scripts are classic scripts sharing a `window.__ARTR`
