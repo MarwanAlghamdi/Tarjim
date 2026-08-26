@@ -27,6 +27,20 @@ describe('parseEndpoint', () => {
     expect(parseEndpoint('not a host').ok).toBe(false);
   });
 
+  it('rejects a host that a browser would percent-encode', () => {
+    // Chromium accepts `new URL("http://not a host")` and encodes the spaces,
+    // where Node throws. Both must be rejected, so the encoded form is tested
+    // explicitly rather than relying on the constructor to throw.
+    expect(parseEndpoint('http://not%20a%20host:11434').ok).toBe(false);
+    expect(parseEndpoint('http://bad_host%2Fpath:11434').ok).toBe(false);
+  });
+
+  it('accepts hostnames, IPv4 and bracketed IPv6 literals', () => {
+    expect(parseEndpoint('ollama.lan:11434').ok).toBe(true);
+    expect(parseEndpoint('192.168.1.50:11434').ok).toBe(true);
+    expect(parseEndpoint('[::1]:11434')).toEqual({ ok: true, url: 'http://[::1]:11434' });
+  });
+
   it('rejects a non-http scheme', () => {
     expect(parseEndpoint('ftp://localhost:11434').ok).toBe(false);
   });

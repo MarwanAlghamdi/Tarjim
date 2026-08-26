@@ -67,8 +67,14 @@
     // Guard the whole widget: stop the host page's own click-away and
     // selection-clearing logic from firing, and stop the browser from
     // collapsing the selection when the bubble is pressed.
-    host.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); }, true);
-    host.addEventListener('click', (e) => e.stopPropagation(), true);
+    //
+    // These MUST be bubble-phase, not capture. A capture listener on the host
+    // runs before the event descends into the shadow tree, so stopPropagation
+    // there would prevent the bubble/panel buttons from ever seeing their own
+    // clicks. In the bubble phase the inner handler runs first, then the event
+    // is stopped here before it can escape to the host page.
+    host.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
+    host.addEventListener('click', (e) => e.stopPropagation());
 
     els.bubble.addEventListener('click', () => emit('translate'));
     els.copy.addEventListener('click', () => emit('copy'));

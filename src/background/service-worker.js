@@ -19,14 +19,21 @@ const CONTEXT_MENU_ID = 'ollama-ar-translate-selection';
  * ------------------------------------------------------------------ */
 const PRELOAD_INTERVAL_MS = 60_000;
 let lastPreloadAt = 0;
+let lastPreloadKey = '';
 
 async function maybePreload(force = false) {
   const settings = await getSettings();
   if (!settings.autoPreload && !force) return;
 
+  // Throttle per target, not per wall-clock alone: a different endpoint or
+  // model is a different thing to warm, so it must never be suppressed by a
+  // preload that was aimed somewhere else.
+  const key = `${settings.endpoint}|${settings.model}`;
   const now = Date.now();
-  if (!force && now - lastPreloadAt < PRELOAD_INTERVAL_MS) return;
+  if (!force && key === lastPreloadKey && now - lastPreloadAt < PRELOAD_INTERVAL_MS) return;
+
   lastPreloadAt = now;
+  lastPreloadKey = key;
 
   preloadModel(settings.endpoint, settings.model);
 }
@@ -49,6 +56,13 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.runtime.onStartup.addListener(() => maybePreload(true));
+
+// Changing the endpoint or model must warm the NEW target immediately, so the
+// throttle is cleared rather than making the user wait out the interval.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local' || !changes.settings) return;
+  maybePreload();
+});
 
 /* ------------------------------------------------------------------ *
  * Port protocol
