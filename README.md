@@ -202,6 +202,8 @@ npm test          # unit tests (Vitest)
 npm run test:e2e  # end-to-end tests (Playwright)
 npm run verify    # both
 
+npm run verify:brave      # drive the REAL Brave build installed on this machine
+npm run verify:brave:live # same, but with a real translation via real Ollama
 npm run verify:live   # against REAL Ollama (needs step 1 + the model pulled)
 OLLAMA_ENDPOINT=192.168.1.50:11434 OLLAMA_MODEL=iKhalid/ALLaM:7b npm run verify:live
 ```
@@ -215,8 +217,14 @@ No build step: the service worker, options page and popup are native ES
 modules; content scripts are classic scripts sharing a `window.__ARTR`
 namespace, because MV3 content scripts cannot be ES modules.
 
-E2E tests run against **Playwright's bundled Chromium**, not the installed
-Brave. Snap-packaged browsers are confined by AppArmor and cannot write to an
+`verify:brave` is the exception to the rule below: it drives the actual Brave
+binary to confirm the extension works in the browser you use, checking that
+Brave Shields and its localhost policy do not block the service worker's calls
+to Ollama. It uses a throwaway profile under `~/.cache/` — snap confinement
+blocks a `--user-data-dir` in `/tmp`.
+
+The regular E2E tests run against **Playwright's bundled Chromium**, not the
+installed Brave. Snap-packaged browsers are confined by AppArmor and cannot write to an
 arbitrary `--user-data-dir`, which sends the automation driver into a
 `DevToolsActivePort` timeout loop; Playwright also injects Chromium flags that
 conflict with Brave. Install it once with `npx playwright install chromium`.

@@ -77,9 +77,13 @@ test('closing the panel cancels the run in flight', async ({ context, fixtureUrl
   await page.keyboard.press('Escape');
   await expect(root.locator('.panel')).toBeHidden();
 
-  // Reopening must not show leftovers from the cancelled run.
+  // The next translation must actually SUCCEED. Asserting only that the old
+  // text is absent is tautological -- a panel stuck on "Translating..." with an
+  // empty body passes that too, which is exactly how a real regression (both
+  // sides minting their own run ids) slipped through.
   await page.waitForTimeout(2000);
   await selectParagraph(page, 'french');
   await root.locator('.bubble').click();
+  await expect(root.locator('.panel-body')).toContainText('[Le chat noir', { timeout: 20_000 });
   await expect(root.locator('.panel-body')).not.toContainText('[The committee');
 });

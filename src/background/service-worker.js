@@ -75,7 +75,6 @@ chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== PORT_NAME) return;
 
   let controller = null;
-  let runSeq = 0;
 
   port.onDisconnect.addListener(() => controller?.abort());
 
@@ -100,12 +99,14 @@ chrome.runtime.onConnect.addListener((port) => {
     controller?.abort();
 
     const mine = new AbortController();
-    const runId = ++runSeq;
     controller = mine;
 
-    // Every message carries its run id so the content script can discard
-    // chunks from a run that has already been superseded.
-    const post = (message) => safePost(port, { ...message, runId });
+    // Echo the caller's request id on every message so the content script can
+    // discard replies belonging to a request it has already cancelled or
+    // replaced. The id is the CLIENT's -- a counter of our own would drift out
+    // of step with theirs after a cancel and every reply would look stale.
+    const reqId = msg.reqId;
+    const post = (message) => safePost(port, { ...message, reqId });
 
     try {
       const settings = await getSettings();

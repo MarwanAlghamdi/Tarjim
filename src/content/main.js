@@ -17,10 +17,14 @@
   let port = null;
   let receivedAnyToken = false;
   let retriedOnce = false;
-  // The service worker tags every message with the id of the run that produced
-  // it. Anything from a superseded run is dropped, so a cancelled or replaced
-  // translation cannot keep appending tokens to the panel.
-  let activeRunId = null;
+  // Identifies the translation the panel is currently showing.
+  //
+  // The id is generated HERE and echoed back by the service worker, rather than
+  // being minted by the worker. An earlier version had both sides keeping their
+  // own counters; after a cancel the client's counter ran ahead of the worker's
+  // and every subsequent reply was discarded as "stale", leaving the panel
+  // stuck on "Translating..." forever.
+  let currentReqId = 0;
 
   /* ---------------- port ---------------- */
 
@@ -28,12 +32,8 @@
     port = chrome.runtime.connect({ name: PORT_NAME });
 
     port.onMessage.addListener((msg) => {
-      // First message of a run claims the panel; later runs supersede earlier
-      // ones, and stragglers from an older run are ignored.
-      if (typeof msg.runId === 'number') {
-        if (activeRunId !== null && msg.runId < activeRunId) return;
-        activeRunId = msg.runId;
-      }
+      // Ignore anything that belongs to a superseded or cancelled request.
+      if (typeof msg.reqId === 'number' && msg.reqId !== currentReqId) return;
 
       if (msg.type === MSG.CHUNK) {
         receivedAnyToken = true;
@@ -125,8 +125,9 @@
   /** Abort whatever is streaming and stop accepting its messages. */
   function cancelActiveRun() {
     send({ type: MSG.CANCEL });
-    // Bump past the current run so any chunk already in flight is discarded.
-    if (activeRunId !== null) activeRunId += 1;
+    // Moving to a fresh id means replies to the cancelled request no longer
+    // match and are dropped, even if they were already in flight.
+    currentReqId += 1;
   }
 
   document.addEventListener('keydown', (event) => {
@@ -143,12 +144,12 @@
 
     // Supersede anything already streaming. The worker aborts its side too;
     // this guards the window before that takes effect.
-    if (activeRunId !== null) activeRunId += 1;
+    const reqId = ++currentReqId;
 
     receivedAnyToken = false;
     ui.openPanel(lastRect ?? { left: 20, top: 20, bottom: 20 });
     ui.setState('loading');
-    send({ type: MSG.TRANSLATE, text });
+    send({ type: MSG.TRANSLATE, text, reqId });
   }
 
   ui.onTranslateClick(() => run(lastText));

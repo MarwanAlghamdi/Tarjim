@@ -10,7 +10,9 @@
     "test:e2e": "playwright test",
     "verify": "vitest run && playwright test",
     "stub": "node tests/stub/ollama-stub.js",
-    "verify:live": "playwright test --config=playwright.live.config.js"
+    "verify:live": "playwright test --config=playwright.live.config.js",
+    "verify:brave": "node tools/verify-brave.mjs",
+    "verify:brave:live": "node tools/verify-brave.mjs --live"
   },
   "dependencies": {},
   "devDependencies": {
