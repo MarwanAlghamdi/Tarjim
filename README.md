@@ -63,6 +63,8 @@ script downloads the prebuilt release and applies two patches (see
 
 ### 4. Load the extension
 
+Requires Chrome/Chromium **126 or newer** (Brave 1.93 is Chromium 151).
+
 1. Open `brave://extensions` (or `chrome://extensions`).
 2. Turn on **Developer mode**.
 3. **Load unpacked** → select this directory.
@@ -109,6 +111,17 @@ internal extension. Extensions cannot inject content scripts into another
 extension's pages, so `window.getSelection()` returns nothing there — Google's
 own Translate extension has the same limitation. The bundled PDF.js viewer
 renders a real, selectable text layer, so selection works normally.
+
+Opening a PDF goes through `src/pdf/open.html` rather than straight to the
+viewer. Reading a file on some other site needs an optional host permission,
+and `chrome.permissions.request()` requires transient user activation — which
+does **not** survive an `await`, so a service worker can never satisfy it (it
+must await tab lookups first). Asking from that page, on a real click, is the
+only way it can work. When the origin is already granted the page redirects
+instantly and you never see it.
+
+The extension requires **Chrome/Chromium 126+**, because the vendored PDF.js
+viewer uses the static `URL.parse()`.
 
 ## Why the model is preloaded
 

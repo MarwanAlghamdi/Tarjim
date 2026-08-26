@@ -44,9 +44,11 @@ async function serviceWorker(context) {
 export const test = base.extend({
   // Override in a test file with `test.use({ cpuOffload: true })`.
   cpuOffload: [false, { option: true }],
+  // Per-token delay; raise it to make an in-flight stream observable.
+  streamDelayMs: [5, { option: true }],
 
-  stub: async ({ cpuOffload }, use) => {
-    const server = await createOllamaStub({ port: 0, cpuOffload });
+  stub: async ({ cpuOffload, streamDelayMs }, use) => {
+    const server = await createOllamaStub({ port: 0, cpuOffload, delayMs: streamDelayMs });
     await use({ server, url: `http://127.0.0.1:${server.address().port}` });
     await new Promise((r) => server.close(r));
   },

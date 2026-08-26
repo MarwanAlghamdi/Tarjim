@@ -75,6 +75,7 @@ chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== PORT_NAME) return;
 
   let controller = null;
+  let runSeq = 0;
 
   port.onDisconnect.addListener(() => controller?.abort());
 
@@ -86,37 +87,51 @@ chrome.runtime.onConnect.addListener((port) => {
 
     if (msg?.type === MSG.CANCEL) {
       controller?.abort();
+      controller = null;
       return;
     }
 
     if (msg?.type !== MSG.TRANSLATE) return;
 
-    controller = new AbortController();
+    // A second request supersedes the first. Without this abort the earlier
+    // stream keeps running and both write CHUNKs onto the same port, so the
+    // panel interleaves two translations -- and the first request's `finally`
+    // would clear the second's controller, leaving Stop with nothing to abort.
+    controller?.abort();
+
+    const mine = new AbortController();
+    const runId = ++runSeq;
+    controller = mine;
+
+    // Every message carries its run id so the content script can discard
+    // chunks from a run that has already been superseded.
+    const post = (message) => safePost(port, { ...message, runId });
 
     try {
       const settings = await getSettings();
 
       const result = await translateText(msg.text, settings, {
-        signal: controller.signal,
-        onToken: (token) => safePost(port, { type: MSG.CHUNK, token }),
-        onProgress: (p) => safePost(port, { type: MSG.PROGRESS, ...p }),
+        signal: mine.signal,
+        onToken: (token) => post({ type: MSG.CHUNK, token }),
+        onProgress: (p) => post({ type: MSG.PROGRESS, ...p }),
       });
 
-      safePost(port, {
+      post({
         type: MSG.DONE,
         text: result.text,
         passthrough: result.passthrough,
         model: settings.model,
       });
     } catch (err) {
-      if (err?.kind === 'aborted') return;
-      safePost(port, {
+      if (err?.kind === 'aborted' || mine.signal.aborted) return;
+      post({
         type: MSG.ERROR,
         kind: err?.kind ?? 'unknown',
         message: err?.message ?? 'Translation failed.',
       });
     } finally {
-      controller = null;
+      // Only clear it if a newer run has not already taken ownership.
+      if (controller === mine) controller = null;
     }
   });
 });
@@ -140,14 +155,24 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 
   if (info.menuItemId !== CONTEXT_MENU_ID || !tab?.id) return;
-  chrome.tabs.sendMessage(tab.id, { type: MSG.TRANSLATE, text: info.selectionText ?? '' })
-    .catch(() => { /* no content script on this page */ });
+
+  // frameId is essential: content scripts run in every frame (all_frames:
+  // true), so a broadcast would open a panel and start a full generation in
+  // each one. info.frameId is the frame the user actually right-clicked.
+  chrome.tabs.sendMessage(
+    tab.id,
+    { type: MSG.TRANSLATE, text: info.selectionText ?? '' },
+    { frameId: info.frameId ?? 0 },
+  ).catch(() => { /* no content script in that frame */ });
 });
 
 chrome.commands.onCommand.addListener(async (command) => {
   if (command !== 'translate-selection') return;
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
+  // No frameId here: the shortcut carries no frame context. Broadcasting is
+  // safe because a frame with no live selection ignores the message
+  // (src/content/main.js), so only the focused frame acts.
   chrome.tabs.sendMessage(tab.id, { type: MSG.TRANSLATE })
     .catch(() => { /* no content script on this page */ });
 });
@@ -162,27 +187,25 @@ chrome.commands.onCommand.addListener(async (command) => {
  * extension documents the identical limitation. The fix is to reopen the file
  * in a bundled PDF.js viewer, whose text layer is ordinary selectable DOM.
  * ------------------------------------------------------------------ */
-const VIEWER_PATH = 'src/pdfjs/web/viewer.html';
+const PDF_GATE_PATH = 'src/pdf/open.html';
 
+/**
+ * Send the tab to the permission gate page, which then redirects into the
+ * bundled viewer.
+ *
+ * The worker deliberately does NOT call chrome.permissions.request() itself:
+ * that API needs transient user activation, activation does not survive an
+ * `await`, and this function must await tab lookups first. Requesting here
+ * always rejects with "This function must be called during a user gesture",
+ * which silently broke every http(s) PDF. src/pdf/open.js does the asking from
+ * a real page click instead, and redirects straight through when the origin is
+ * already granted.
+ */
 async function openPdfInViewer(tab) {
   if (!tab?.url) throw new Error('No file to open.');
 
-  if (tab.url.startsWith('file://')) {
-    if (!(await chrome.extension.isAllowedFileSchemeAccess())) {
-      throw new Error(
-        'Enable "Allow access to file URLs" for this extension at brave://extensions, then try again.',
-      );
-    }
-  } else {
-    const origin = `${new URL(tab.url).origin}/*`;
-    if (!(await chrome.permissions.contains({ origins: [origin] }))
-        && !(await chrome.permissions.request({ origins: [origin] }))) {
-      throw new Error('Permission to read that site was denied.');
-    }
-  }
-
-  const viewer = chrome.runtime.getURL(VIEWER_PATH) + '?file=' + encodeURIComponent(tab.url);
-  await chrome.tabs.update(tab.id, { url: viewer });
+  const gate = chrome.runtime.getURL(PDF_GATE_PATH) + '?src=' + encodeURIComponent(tab.url);
+  await chrome.tabs.update(tab.id, { url: gate });
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

@@ -33,6 +33,9 @@ window.__ARTR.CSS = `
   .panel {
     width: 380px;
     max-width: calc(100vw - 24px);
+    max-height: 420px;
+    display: flex;
+    flex-direction: column;
     background: #fff;
     color: #111;
     border: 1px solid #d4d4d8;
@@ -70,6 +73,8 @@ window.__ARTR.CSS = `
 
   .panel-body {
     padding: 12px 14px;
+    flex: 1 1 auto;
+    min-height: 0;
     max-height: 320px;
     overflow-y: auto;
     font-size: 16px;

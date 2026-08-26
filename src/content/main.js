@@ -17,6 +17,10 @@
   let port = null;
   let receivedAnyToken = false;
   let retriedOnce = false;
+  // The service worker tags every message with the id of the run that produced
+  // it. Anything from a superseded run is dropped, so a cancelled or replaced
+  // translation cannot keep appending tokens to the panel.
+  let activeRunId = null;
 
   /* ---------------- port ---------------- */
 
@@ -24,6 +28,13 @@
     port = chrome.runtime.connect({ name: PORT_NAME });
 
     port.onMessage.addListener((msg) => {
+      // First message of a run claims the panel; later runs supersede earlier
+      // ones, and stragglers from an older run are ignored.
+      if (typeof msg.runId === 'number') {
+        if (activeRunId !== null && msg.runId < activeRunId) return;
+        activeRunId = msg.runId;
+      }
+
       if (msg.type === MSG.CHUNK) {
         receivedAnyToken = true;
         ui.appendToken(msg.token);
@@ -105,12 +116,21 @@
     if (!sel || sel.isCollapsed) ui.hideBubble();
   });
 
+  function stopAndClose() {
+    ui.hideBubble();
+    ui.closePanel();
+    cancelActiveRun();
+  }
+
+  /** Abort whatever is streaming and stop accepting its messages. */
+  function cancelActiveRun() {
+    send({ type: MSG.CANCEL });
+    // Bump past the current run so any chunk already in flight is discarded.
+    if (activeRunId !== null) activeRunId += 1;
+  }
+
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      ui.hideBubble();
-      ui.closePanel();
-      send({ type: MSG.CANCEL });
-    }
+    if (event.key === 'Escape') stopAndClose();
   });
 
   window.addEventListener('scroll', () => ui.hideBubble(), { passive: true, capture: true });
@@ -121,6 +141,10 @@
     if (!text) return;
     if (resetRetry) retriedOnce = false;
 
+    // Supersede anything already streaming. The worker aborts its side too;
+    // this guards the window before that takes effect.
+    if (activeRunId !== null) activeRunId += 1;
+
     receivedAnyToken = false;
     ui.openPanel(lastRect ?? { left: 20, top: 20, bottom: 20 });
     ui.setState('loading');
@@ -130,7 +154,7 @@
   ui.onTranslateClick(() => run(lastText));
   ui.onRetryClick(() => run(lastText));
   ui.onCancelClick(() => {
-    send({ type: MSG.CANCEL });
+    cancelActiveRun();
     ui.setState('error', { message: 'Cancelled.' });
   });
   ui.onCopyClick(() => navigator.clipboard.writeText(ui.getText()).catch(() => {}));
@@ -141,12 +165,20 @@
     if (msg?.type !== MSG.TRANSLATE) return;
 
     const selection = currentSelection();
-    const text = msg.text || selection?.text || lastText;
+
+    // The Alt+T shortcut has no frame context, so the worker broadcasts it to
+    // every frame. Only the frame that actually holds the selection may act --
+    // otherwise a page with iframes opens one panel and starts one full
+    // generation per frame. (The context-menu path is frame-targeted by the
+    // worker, and always supplies msg.text.)
+    if (!selection && !msg.text) return;
+
+    const text = msg.text || selection?.text || '';
     if (selection) lastRect = selection.rect;
-    if (text) {
-      lastText = text;
-      run(text);
-    }
+    if (!text) return;
+
+    lastText = text;
+    run(text);
   });
 
   ui.mount();

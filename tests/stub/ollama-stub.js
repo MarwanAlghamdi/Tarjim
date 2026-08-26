@@ -18,9 +18,13 @@ function cors(origin) {
   };
 }
 
-/** Deterministic pseudo-Arabic so assertions do not depend on a real model. */
+/**
+ * Deterministic pseudo-Arabic so assertions do not depend on a real model.
+ * The prompt is echoed so a test can tell two concurrent runs apart.
+ */
 function tokensFor(prompt) {
-  return ['ترجمة', ' تجريبية', ` (${String(prompt).trim().slice(0, 12)})`];
+  const tag = String(prompt).trim().slice(0, 14);
+  return ['ترجمة', ' تجريبية', ` [${tag}]`];
 }
 
 /**

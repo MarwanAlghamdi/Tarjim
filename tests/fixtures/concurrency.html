@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Concurrency fixture</title>
+  <style>
+    body { margin: 0; font: 16px/1.5 system-ui, sans-serif; }
+    /* Two widely separated columns so the result panel (380px wide, anchored
+       under the left selection) never covers the right-hand paragraph. */
+    /* align-items: flex-start is essential -- the default `stretch` makes both
+       paragraphs as tall as the taller one, so a drag through the vertical
+       middle of the shorter one lands in empty space and selects nothing. */
+    .cols { display: flex; align-items: flex-start; gap: 340px; padding: 12px 20px; }
+    .cols p { width: 300px; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="cols">
+    <p id="english">The committee approved the proposal unanimously.</p>
+    <p id="french">Le chat noir dort sur le canape.</p>
+  </div>
+</body>
+</html>

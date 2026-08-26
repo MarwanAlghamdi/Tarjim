@@ -13,6 +13,12 @@
 
   const HOST_ID = 'ollama-ar-translator-root';
   const MARGIN = 8;
+  const PANEL_WIDTH = 380;
+  // The panel is measured for placement BEFORE any tokens exist, when it is
+  // only ~60px tall. It grows to roughly this once streaming (.panel-body caps
+  // at 320px plus header and status), so placing against the grown height is
+  // what keeps it on screen instead of letting it run off the bottom.
+  const PANEL_MAX_HEIGHT = 420;
 
   const handlers = { translate: [], cancel: [], retry: [], copy: [] };
   let shadow = null;
@@ -117,7 +123,7 @@
     hideBubble();
     els.body.textContent = '';
     els.panel.hidden = false;
-    place(els.panel, rect, 380, Math.min(360, els.panel.offsetHeight || 200));
+    place(els.panel, rect, PANEL_WIDTH, PANEL_MAX_HEIGHT);
   }
 
   function closePanel() {

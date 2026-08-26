@@ -68,13 +68,15 @@ el.go.addEventListener('click', async () => {
         'Local PDFs need "Allow access to file URLs" enabled on this extension\'s details page.';
     }
     el.pdfBtn.addEventListener('click', async () => {
-      const res = await chrome.runtime.sendMessage({ type: 'open-pdf' });
-      if (res?.ok) {
-        window.close();
-      } else {
-        el.pdfHint.hidden = false;
-        el.pdfHint.textContent = res?.error ?? 'Could not open the viewer.';
-      }
+      // Navigate to the permission gate rather than straight to the viewer.
+      // It redirects through instantly when the origin is already granted, and
+      // otherwise asks from a real page click -- which the service worker
+      // cannot do, because permission requests need user activation and
+      // activation does not survive an await.
+      const gate = chrome.runtime.getURL('src/pdf/open.html')
+        + '?src=' + encodeURIComponent(tab.url);
+      await chrome.tabs.update(tab.id, { url: gate });
+      window.close();
     });
   }
 

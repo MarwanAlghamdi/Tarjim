@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Open PDF in translator</title>
+  <link rel="stylesheet" href="open.css">
+</head>
+<body>
+  <main>
+    <h1>Open this PDF in the translator viewer</h1>
+    <p id="target" class="target"></p>
+    <p id="explain">
+      Chrome's built-in PDF viewer cannot expose selected text to an extension.
+      This reopens the file in a bundled PDF.js viewer, where selection works normally.
+    </p>
+    <p id="ask" hidden>
+      To read the file, the extension needs permission for
+      <strong id="origin"></strong>.
+    </p>
+    <button id="grant" type="button" class="primary" hidden>Grant access and open</button>
+    <p id="status" class="status" role="status"></p>
+  </main>
+  <script type="module" src="open.js"></script>
+</body>
+</html>
