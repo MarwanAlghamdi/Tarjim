@@ -4,7 +4,7 @@ import { defineConfig } from '@playwright/test';
 // model load. Kept out of the default config so `npm run verify` stays hermetic.
 export default defineConfig({
   testDir: './tests/live',
-  timeout: 180_000,
+  timeout: 600_000,
   fullyParallel: false,
   workers: 1,
   reporter: 'list',

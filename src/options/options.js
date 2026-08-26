@@ -31,7 +31,7 @@ function setStatus(node, message, kind = '') {
 async function ensureHostPermission(url) {
   const origin = `${new URL(url).origin}/*`;
   if (await chrome.permissions.contains({ origins: [origin] })) return true;
-  return chrome.permissions.request({ origins: [origin] });
+  return false; /* MUT: request() replaced */
 }
 
 async function refreshModels(endpoint, selected) {

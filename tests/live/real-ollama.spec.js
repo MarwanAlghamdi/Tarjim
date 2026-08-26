@@ -8,7 +8,11 @@ import { test, expect, ENDPOINT, MODEL } from './fixtures.js';
 
 const ARABIC = /[؀-ۿ]/;
 
-test.describe.configure({ mode: 'serial', timeout: 180_000 });
+// Timeouts are deliberately generous. If the model does not fit in free VRAM
+// Ollama runs it on the CPU at roughly a tenth the speed, and the suite should
+// still verify correctness rather than fail as a timeout -- the GPU-split
+// preflight above is what reports the slowness.
+test.describe.configure({ mode: 'serial', timeout: 600_000 });
 
 async function selectParagraph(page, id) {
   const box = await page.locator(`#${id}`).boundingBox();
@@ -71,7 +75,7 @@ test('English selection is translated to Arabic by the real model', async ({ con
   // Generous: covers a cold model load plus the automatic single retry.
   await expect.poll(
     async () => ARABIC.test(await root.locator('.panel-body').textContent()),
-    { timeout: 150_000, intervals: [1000] },
+    { timeout: 420_000, intervals: [2000] },
   ).toBe(true);
 
   await expect(root.locator('.panel-title')).toContainText(MODEL);
@@ -88,7 +92,7 @@ test('a non-English source language also lands in Arabic', async ({ context, fix
 
   await expect.poll(
     async () => ARABIC.test(await root.locator('.panel-body').textContent()),
-    { timeout: 120_000, intervals: [1000] },
+    { timeout: 420_000, intervals: [2000] },
   ).toBe(true);
   console.log('  french ->', (await root.locator('.panel-body').textContent()).trim());
 });
