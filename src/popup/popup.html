@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Ollama Arabic Translator</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <span id="conn" class="dot" title="Checking…"></span>
+    <span id="conn-text">Checking…</span>
+    <button id="options" type="button" title="Options">&#9881;</button>
+  </header>
+
+  <textarea id="input" rows="4" placeholder="Paste text to translate to Arabic…"></textarea>
+  <button id="go" type="button" class="primary">Translate</button>
+
+  <div id="output" dir="rtl" lang="ar"></div>
+  <p id="status" class="status" role="status"></p>
+
+  <footer>
+    <button id="open-pdf" data-action="open-pdf" type="button" hidden>
+      Open this PDF in the translator viewer
+    </button>
+    <p id="pdf-hint" class="hint" hidden></p>
+  </footer>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

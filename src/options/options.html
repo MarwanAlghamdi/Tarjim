@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Ollama Arabic Translator — Options</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <h1>Ollama Arabic Translator</h1>
+
+    <section>
+      <label for="endpoint">Ollama server</label>
+      <div class="row">
+        <input id="endpoint" type="text" spellcheck="false" placeholder="localhost:11434">
+        <button id="test" type="button">Test connection</button>
+      </div>
+      <p class="help">Accepts <code>host:port</code> or a full URL — e.g. <code>192.168.1.50:11434</code>.</p>
+      <p id="endpoint-status" class="status" role="status"></p>
+    </section>
+
+    <section>
+      <label for="model">Model</label>
+      <select id="model"><option value="">Test the connection to load models…</option></select>
+      <p id="model-warning" class="status warn" hidden></p>
+    </section>
+
+    <section>
+      <label class="checkbox">
+        <input id="auto-preload" type="checkbox">
+        Preload the model when text is selected
+      </label>
+      <p class="help">
+        Keeps the model in VRAM so the first translation is not delayed by a cold load
+        (measured at 24.5&nbsp;s for <code>gemma3:12b</code>). Turn off to free VRAM between uses.
+      </p>
+    </section>
+
+    <div class="row">
+      <button id="save" type="button" class="primary">Save</button>
+      <span id="save-status" class="status" role="status"></span>
+    </div>
+  </main>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

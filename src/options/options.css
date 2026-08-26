@@ -1,0 +1,48 @@
+:root { color-scheme: light dark; }
+
+body {
+  margin: 0;
+  padding: 28px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  background: Canvas;
+  color: CanvasText;
+}
+
+main { max-width: 620px; margin: 0 auto; }
+h1 { font-size: 19px; margin: 0 0 22px; }
+section { margin-bottom: 24px; }
+
+label { display: block; font-weight: 600; margin-bottom: 6px; }
+label.checkbox { font-weight: 400; display: flex; align-items: center; gap: 8px; }
+
+.row { display: flex; gap: 8px; align-items: center; }
+
+input[type="text"], select {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #a1a1aa;
+  border-radius: 6px;
+  font: inherit;
+  background: Field;
+  color: FieldText;
+}
+
+button {
+  padding: 8px 14px;
+  border: 1px solid #a1a1aa;
+  border-radius: 6px;
+  background: ButtonFace;
+  color: ButtonText;
+  font: inherit;
+  cursor: pointer;
+}
+button.primary { background: #155e75; border-color: #155e75; color: #fff; }
+button:disabled { opacity: .55; cursor: default; }
+
+.help { margin: 6px 0 0; font-size: 12px; opacity: .72; }
+.status { margin: 8px 0 0; font-size: 13px; min-height: 1.2em; }
+.status.ok { color: #15803d; }
+.status.error { color: #b91c1c; }
+.status.warn { color: #b45309; }
+code { font-family: ui-monospace, Menlo, Consolas, monospace; }
