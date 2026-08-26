@@ -10,17 +10,34 @@
  *    detected here and never reaches a model.
  */
 
-// Arabic, Arabic Supplement, Extended-A/B, Presentation Forms-A/B.
-const ARABIC_RANGES =
-  '\\u0600-\\u06FF\\u0750-\\u077F\\u0870-\\u089F\\u08A0-\\u08FF\\uFB50-\\uFDFF\\uFE70-\\uFEFF';
+// Letters that Modern Standard Arabic itself uses, plus tatweel and alef wasla.
+//
+// This is deliberately NARROWER than the Arabic Unicode block. Persian, Urdu
+// and Pashto are written in the same block but with extra letters -- Persian
+// pe/che/zhe/gaf/farsi-yeh (U+067E, U+0686, U+0698, U+06AF, U+06CC), Urdu
+// tteh/ddal/rreh/heh-doachashmee/yeh-barree (U+0679, U+0688, U+0691, U+06BE,
+// U+06D2), and so on. A range covering the whole block classifies Persian and
+// Urdu as "already Arabic" and passes them through untranslated, which is
+// exactly the case this extension exists to handle.
+const AR_LETTERS =
+  '\\u0621-\\u063A\\u0640-\\u064A\\u0671'
+  // Arabic ligatures and presentation forms (e.g. U+FDF2 Allah).
+  + '\\uFDF0-\\uFDFF\\uFE70-\\uFEFF';
 
-const ARABIC_LETTER = new RegExp(`[${ARABIC_RANGES}]`, 'u');
+// Harakat and other marks that legitimately appear in Arabic text.
+const AR_MARKS = '\\u064B-\\u0655\\u0670';
 
-// Anything that is a letter from some other script. Whitespace, digits,
-// punctuation, symbols, combining marks and format characters are ignored so
-// that "chapter 3: intro (2024)" written in Arabic still counts as Arabic-only.
+// Arabic-script punctuation (comma, semicolon, question mark, percent, full stop).
+const AR_PUNCT = '\\u060C\\u061B\\u061F\\u066A-\\u066D\\u06D4';
+
+const ARABIC_LETTER = new RegExp(`[${AR_LETTERS}]`, 'u');
+
+// Any character that is a letter from outside the Arabic-language set. Digits
+// (of any script), whitespace, punctuation, symbols, marks and format
+// characters are all ignored, so "chapter 3: intro (2024)" written in Arabic
+// still counts as Arabic-only.
 const NON_ARABIC_LETTER = new RegExp(
-  `[^${ARABIC_RANGES}\\s\\d\\p{P}\\p{S}\\p{M}\\p{Cf}]`,
+  `[^${AR_LETTERS}${AR_MARKS}${AR_PUNCT}\\s\\p{N}\\p{P}\\p{S}\\p{Cf}]`,
   'u',
 );
 

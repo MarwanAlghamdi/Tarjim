@@ -119,6 +119,43 @@ moment the selection bubble appears, before you click. Ollama keeps loading the
 model even if the worker is torn down, and if a request does die the panel
 retries once automatically.
 
+## Arabic vs. other Arabic-script languages
+
+Text that is already Arabic is detected client-side and returned unchanged,
+without ever reaching a model. Prompting for pass-through does not work — asked
+to "return Arabic unchanged", ALLaM:7b *replied* to `السلام عليكم` with
+`وعليكم السلام` instead of echoing it.
+
+The detection is narrower than the Arabic Unicode block on purpose. Persian,
+Urdu and Pashto use the same block plus extra letters (Persian
+`پ چ ژ گ ی`, Urdu `ٹ ڈ ڑ ھ ہ ے`, …). Matching the whole block classifies them
+as "already Arabic" and passes them through untranslated — precisely the case
+this extension exists to handle. Only Modern Standard Arabic letters, harakat,
+Arabic punctuation and ligatures count; numerals, whitespace and Western
+punctuation are ignored, so `الفصل 3: المقدمة (2024)` still counts as Arabic.
+
+## Why translations can suddenly take minutes
+
+Ollama does not error when a model will not fit in free VRAM — it quietly
+offloads the remainder to the CPU and runs 10–30x slower. Measured on this
+machine while another process held 14.4 GB of a 16 GB card:
+
+```
+$ curl -s localhost:11434/api/ps
+gemma3:12b   size 8.9 GB   size_vram 0.1 GB     <-- 1% on the GPU
+```
+
+A one-sentence translation went from ~2 s to ~33 s, and a browser round trip to
+over two minutes. Nothing in Ollama's response indicates this.
+
+The extension therefore checks `/api/ps` when the popup opens and shows an
+orange banner naming the exact split when less than half the model is on the
+GPU. `npm run verify:live` prints the same figure in its preflight, so a slow
+live run explains itself instead of looking like a timeout.
+
+To fix it: free the VRAM (`nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv`
+shows what is holding it), or pick a model that fits in what is free.
+
 ## Why qwen3 models are flagged
 
 On Ollama 0.32.3 the `think: false` parameter is ignored by `qwen3` on **both**
@@ -138,6 +175,7 @@ choice for translation.
 | No bubble on a PDF | Chrome's built-in viewer cannot expose selection | Use *Open this PDF in the translator viewer* |
 | Empty translation, long delay | A `qwen3` model is selected | Switch to `gemma3:12b` in options |
 | First translation slow, later ones fast | Cold model load (~24 s for `gemma3:12b`) | Keep *Preload the model* enabled |
+| **Every** translation takes minutes | The model does not fit in free VRAM, so Ollama silently ran it on the CPU | The popup shows an orange warning with the exact GPU split. Run `nvidia-smi` to find what is holding VRAM, or choose a smaller model in options. See below. |
 | No bubble on `brave://` pages or the Web Store | Chromium forbids content scripts on privileged pages | Expected; use the popup |
 | Local PDF will not open in the viewer | File access is off | Enable **Allow access to file URLs** on the Details page |
 

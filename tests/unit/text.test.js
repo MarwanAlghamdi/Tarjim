@@ -33,6 +33,29 @@ describe('isArabicOnly', () => {
   it('is false for other non-Latin scripts', () => {
     expect(isArabicOnly('今天的天气非常好')).toBe(false);
   });
+
+  it('is false for other languages written in the Arabic script', () => {
+    // Persian, Urdu and Pashto live in the same Unicode block as Arabic. If
+    // these are treated as Arabic they get passed through untranslated, which
+    // silently defeats the whole point of the extension.
+    expect(isArabicOnly('امروز هوا بسیار خوب است و ما تصمیم گرفتیم به پارک برویم')).toBe(false);
+    expect(isArabicOnly('آج موسم بہت اچھا ہے اور ہم نے پارک جانے کا فیصلہ کیا')).toBe(false);
+    expect(isArabicOnly('نن ورځ هوا ډېره ښه ده')).toBe(false);
+  });
+
+  it('is false for a single Persian-only letter among Arabic text', () => {
+    expect(isArabicOnly('هذا نص عربي گ')).toBe(false);
+  });
+
+  it('is true for Arabic with harakat, tatweel and ligatures', () => {
+    expect(isArabicOnly('وَافَقَتِ اللَّجْنَةُ عَلَى الاقْتِرَاحِ')).toBe(true);
+    expect(isArabicOnly('الحمد لله رب العالمين ﷻ')).toBe(true);
+    expect(isArabicOnly('مرحبـــا بكم')).toBe(true);
+  });
+
+  it('is true for Arabic containing Western punctuation and numerals', () => {
+    expect(isArabicOnly('الفصل 3: المقدمة (2024) — نظرة عامة.')).toBe(true);
+  });
 });
 
 describe('sanitizeTranslation', () => {
