@@ -7,3 +7,5 @@ dist/
 .crx-key.pem
 GATES.md
 .unlazy/
+.claude/
+.serena/
