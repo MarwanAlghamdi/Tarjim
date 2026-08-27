@@ -49,8 +49,10 @@ const BANNED = [
 
 function docFiles(root) {
   const out = [];
-  const readme = path.join(root, 'README.md');
-  if (fs.existsSync(readme)) out.push(readme);
+  for (const top of ['README.md', 'CLAUDE.md']) {
+    const f = path.join(root, top);
+    if (fs.existsSync(f)) out.push(f);
+  }
   const docs = path.join(root, 'docs');
   if (fs.existsSync(docs)) {
     for (const f of fs.readdirSync(docs)) {
@@ -202,7 +204,12 @@ function preserved(ctx) {
   const spans = [...new Set([...ctx.head.matchAll(/`([^`\n]{2,})`/g)].map((m) => m[1].trim()))];
   if (spans.length < 20) return [`base README had only ${spans.length} code spans; refusing to certify`];
 
-  const haystack = [...ctx.docs.values()].join('\n');
+  // CLAUDE.md is excluded on purpose: a fact must survive in the reader-facing
+  // docs, not merely in the agent instructions.
+  const haystack = [...ctx.docs]
+    .filter(([f]) => path.basename(f) !== 'CLAUDE.md')
+    .map(([, body]) => body)
+    .join('\n');
   const missing = spans.filter((s) => !haystack.includes(s));
   const kept = (spans.length - missing.length) / spans.length;
 
