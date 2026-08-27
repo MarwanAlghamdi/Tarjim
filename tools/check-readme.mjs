@@ -18,7 +18,7 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // Pinned, not HEAD: once the rewrite is committed, HEAD is the new README and
 // comparing against it would make the preservation gate vacuously true.
-const BASE_REF = process.env.README_BASE_REF ?? '88c933c';
+const BASE_REF = process.env.README_BASE_REF ?? 'd26225c';
 
 const MIN_IMAGES = 4;
 const MIN_IMAGE_BYTES = 10_000;
@@ -39,9 +39,6 @@ const PRIVATE = [
   { name: 'a home directory path', re: /\/(?:home|Users)\/[a-z][\w.-]*/gi, allow: new Set() },
   { name: 'an extension ID', re: /\b[a-p]{32}\b/g, allow: new Set(['abcdefghijklmnopabcdefghijklmnop']) },
 ];
-
-/** Code spans deliberately removed from the docs; see PRIVATE above. */
-const SCRUBBED = new Set(['192.168.1.50:11434']);
 
 const BANNED = [
   'hope this helps', 'let me know if', 'feel free to ask',
@@ -202,8 +199,7 @@ function shape(ctx) {
 function preserved(ctx) {
   if (ctx.head === null) return [`cannot read ${BASE_REF}:README.md`];
 
-  const spans = [...new Set([...ctx.head.matchAll(/`([^`\n]{2,})`/g)].map((m) => m[1].trim()))]
-    .filter((s) => !SCRUBBED.has(s));
+  const spans = [...new Set([...ctx.head.matchAll(/`([^`\n]{2,})`/g)].map((m) => m[1].trim()))];
   if (spans.length < 20) return [`base README had only ${spans.length} code spans; refusing to certify`];
 
   const haystack = [...ctx.docs.values()].join('\n');
