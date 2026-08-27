@@ -5,3 +5,5 @@ playwright-report/
 *.zip
 dist/
 .crx-key.pem
+GATES.md
+.unlazy/
