@@ -34,6 +34,15 @@ Request flow: content script → `chrome.runtime.connect` port → service worke
 
 Each of these was a real defect. Do not undo them.
 
+- **Chrome omits `Origin` on a GET but always sends it on a POST.** A default
+  Ollama answers 403 to `chrome-extension://`, so listing models worked while
+  every translation failed. `src/shared/origin-rule.js` strips the header with
+  a declarativeNetRequest rule scoped to the configured endpoint; that is why
+  `declarativeNetRequestWithHostAccess` is in the manifest and why there is no
+  server-side setup step. `tests/e2e/strict-origin.spec.js` fails without it.
+- **No model name is hardcoded anywhere.** `DEFAULT_SETTINGS.model` is `''` and
+  `pickModel()` chooses from what the server reports. Adding a default puts a
+  download back into the setup path.
 - **Never call `ollama.js` or `openai.js` directly.** Go through
   `clientFor(settings)` in `src/shared/backend.js`. The two servers share no
   paths and no body shape; hardcoding one 404s the other.
@@ -83,7 +92,9 @@ Git identity is set repo-local to a GitHub noreply address; do not override it.
 `.crx-key.pem` is gitignored and must never be committed — the extension ID is a
 hash of it, so losing or leaking it breaks upgrades for every user.
 
-## Deeper reasoning
+## Setup is one step
 
-`docs/WHY.md` records every measured decision: the Ollama 403, the CPU-offload
-detection, the Persian/Urdu edge case, the `<think>` leak, CRX signing.
+Loading the extension and entering a server address is the entire setup. Do not
+reintroduce a required model pull, a privileged script, a browser-specific URL,
+or a server-specific launch command in the README — `node tools/check-readme.mjs
+nohardcode` fails on all five.
