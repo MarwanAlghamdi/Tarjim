@@ -1,5 +1,7 @@
 import { getSettings, saveSettings, parseEndpoint, DEFAULT_SETTINGS } from '../shared/settings.js';
 import { clientFor, detectBackend, BACKEND_LABELS } from '../shared/backend.js';
+import { applyOriginRule } from '../shared/origin-rule.js';
+import { pickModel } from '../shared/models.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -55,11 +57,9 @@ async function refreshModels(endpoint, selected) {
     el.model.appendChild(opt);
   }
 
-  if (selected && usable.some((m) => m.name === selected)) {
-    el.model.value = selected;
-  } else if (usable.some((m) => m.name === DEFAULT_SETTINGS.model)) {
-    el.model.value = DEFAULT_SETTINGS.model;
-  }
+  // No hardcoded fallback: whatever the server has is what gets offered.
+  const chosen = pickModel(knownModels, selected);
+  if (chosen) el.model.value = chosen;
 
   updateModelWarning();
   return usable.length;
@@ -108,6 +108,9 @@ el.test.addEventListener('click', async () => {
       return;
     }
     backend = detected;
+    // Before any POST goes out: without this the server may refuse the
+    // extension's origin and the model list would look like a dead endpoint.
+    await applyOriginRule(parsed.url);
 
     const count = await refreshModels(parsed.url, el.model.value);
     el.endpoint.value = parsed.url;
@@ -139,6 +142,7 @@ el.save.addEventListener('click', async () => {
 
     // Re-detect rather than trusting the last Test: the box may have been
     // edited since, and saving the wrong dialect 404s every translation.
+    await applyOriginRule(parsed.url);
     backend = (await detectBackend(parsed.url)) ?? backend;
 
     const saved = await saveSettings({

@@ -1,5 +1,7 @@
 import { getSettings } from '../shared/settings.js';
 import { clientFor } from '../shared/backend.js';
+import { applyOriginRule } from '../shared/origin-rule.js';
+import { pickModel } from '../shared/models.js';
 import { translateText } from '../shared/translate.js';
 
 const $ = (id) => document.getElementById(id);
@@ -81,16 +83,23 @@ el.go.addEventListener('click', async () => {
   }
 
   try {
+    await applyOriginRule(settings.endpoint);
+
     const client = clientFor(settings);
     const models = await client.listModels(settings.endpoint);
-    const present = models.some((m) => m.name === settings.model);
-    el.conn.className = present ? 'dot ok' : 'dot bad';
-    el.connText.textContent = present ? `${settings.model} ready` : `${settings.model} not installed`;
-    if (present && settings.autoPreload) client.preloadModel(settings.endpoint, settings.model);
+
+    // First run has no model saved; adopt whatever the server offers rather
+    // than reporting the empty default as "not installed".
+    const model = pickModel(models, settings.model);
+    if (model && model !== settings.model) settings = { ...settings, model };
+
+    el.conn.className = model ? 'dot ok' : 'dot bad';
+    el.connText.textContent = model ? `${model} ready` : 'no usable model on that server';
+    if (model && settings.autoPreload) client.preloadModel(settings.endpoint, model);
     await reportGpuOffload(settings);
   } catch (err) {
     el.conn.className = 'dot bad';
-    el.connText.textContent = err.kind === 'cors' ? 'Ollama refused origin' : 'Server unreachable';
+    el.connText.textContent = err.kind === 'cors' ? 'Server refused the request' : 'Server unreachable';
   }
 })();
 

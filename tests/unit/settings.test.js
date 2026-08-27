@@ -51,8 +51,9 @@ describe('settings store', () => {
     expect(await getSettings()).toEqual(DEFAULT_SETTINGS);
   });
 
-  it('defaults the model to gemma3:12b', () => {
-    expect(DEFAULT_SETTINGS.model).toBe('gemma3:12b');
+  // Naming a model here would put a download back into the setup path.
+  it('ships no default model, so nothing has to be pulled before first use', () => {
+    expect(DEFAULT_SETTINGS.model).toBe('');
     expect(DEFAULT_SETTINGS.endpoint).toBe('http://localhost:11434');
   });
 

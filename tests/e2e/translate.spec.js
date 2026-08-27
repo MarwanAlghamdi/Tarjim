@@ -81,7 +81,8 @@ test('a missing model surfaces an actionable error', async ({ context, fixtureUr
   await root.locator('.bubble').click();
 
   await expect(root.locator('.status.error')).toContainText('not found');
-  await expect(root.locator('.status.error')).toContainText('ollama pull');
+  // Server-neutral: the hint must not name one product's command.
+  await expect(root.locator('.status.error')).toContainText('options');
   await expect(root.locator('.btn-retry')).toBeVisible();
 });
 

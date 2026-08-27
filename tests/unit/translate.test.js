@@ -4,7 +4,7 @@ import { DEFAULT_SETTINGS } from '../../src/shared/defaults.js';
 import { ndjsonResponse } from '../helpers/ndjson.js';
 import { sseResponse, delta } from '../helpers/sse.js';
 
-const settings = { ...DEFAULT_SETTINGS, maxChunkChars: 50 };
+const settings = { ...DEFAULT_SETTINGS, model: 'some-model:7b', maxChunkChars: 50 };
 
 function fakeStream(perCallText) {
   let call = 0;
@@ -81,7 +81,7 @@ describe('translateText', () => {
 
     const [endpoint, body] = streamGenerate.mock.calls[0];
     expect(endpoint).toBe(settings.endpoint);
-    expect(body.model).toBe('gemma3:12b');
+    expect(body.model).toBe('some-model:7b');
     expect(body.options.num_ctx).toBe(8192);
     expect(body.keep_alive).toBe('30m');
   });

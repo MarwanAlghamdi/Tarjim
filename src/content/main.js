@@ -73,9 +73,9 @@
   }
 
   function hintFor(kind) {
-    if (kind === 'cors') return 'Run tools/setup-ollama-cors.sh, then reload this page.';
-    if (kind === 'offline') return 'Is Ollama running? Check the endpoint in the extension options.';
-    if (kind === 'model-missing') return 'Pull the model with: ollama pull gemma3:12b';
+    if (kind === 'cors') return 'Reload the extension, then reload this page.';
+    if (kind === 'offline') return 'Is the server running? Check the address in the extension options.';
+    if (kind === 'model-missing') return 'Pick a different model in the extension options.';
     return '';
   }
 

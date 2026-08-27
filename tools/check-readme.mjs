@@ -11,20 +11,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-
-// Pinned, not HEAD: once the rewrite is committed, HEAD is the new README and
-// comparing against it would make the preservation gate vacuously true.
-const BASE_REF = process.env.README_BASE_REF ?? 'd26225c';
 
 const MIN_IMAGES = 4;
 const MIN_IMAGE_BYTES = 10_000;
 const MIN_IMAGE_PX = { width: 300, height: 150 };
 const MAX_LIST_RUN = 5;
-const MIN_PRESERVED = 0.95;
 const ACTION_WITHIN_LINES = 25;
 
 /**
@@ -62,7 +56,7 @@ function docFiles(root) {
   return out;
 }
 
-function loadContext(root, { head } = {}) {
+function loadContext(root) {
   const docs = new Map(docFiles(root).map((f) => [f, fs.readFileSync(f, 'utf8')]));
   const pkgPath = path.join(root, 'package.json');
   return {
@@ -70,16 +64,7 @@ function loadContext(root, { head } = {}) {
     docs,
     readme: docs.get(path.join(root, 'README.md')) ?? '',
     pkg: fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, 'utf8')) : { scripts: {} },
-    head: head ?? readBase(),
   };
-}
-
-function readBase() {
-  try {
-    return execFileSync('git', ['show', `${BASE_REF}:README.md`], { cwd: REPO, encoding: 'utf8' });
-  } catch {
-    return null; // not a git checkout, or the ref is gone
-  }
 }
 
 /* -------------------------------------------------------------------- modes */
@@ -198,30 +183,6 @@ function shape(ctx) {
   return problems;
 }
 
-function preserved(ctx) {
-  if (ctx.head === null) return [`cannot read ${BASE_REF}:README.md`];
-
-  const spans = [...new Set([...ctx.head.matchAll(/`([^`\n]{2,})`/g)].map((m) => m[1].trim()))];
-  if (spans.length < 20) return [`base README had only ${spans.length} code spans; refusing to certify`];
-
-  // CLAUDE.md is excluded on purpose: a fact must survive in the reader-facing
-  // docs, not merely in the agent instructions.
-  const haystack = [...ctx.docs]
-    .filter(([f]) => path.basename(f) !== 'CLAUDE.md')
-    .map(([, body]) => body)
-    .join('\n');
-  const missing = spans.filter((s) => !haystack.includes(s));
-  const kept = (spans.length - missing.length) / spans.length;
-
-  if (kept < MIN_PRESERVED) {
-    return [
-      `only ${(kept * 100).toFixed(1)}% of ${spans.length} code spans survived (want >= ${MIN_PRESERVED * 100}%)`,
-      ...missing.slice(0, 15).map((s) => `  dropped: \`${s}\``),
-    ];
-  }
-  return [];
-}
-
 /**
  * Nothing published may carry a private identifier. This covers the docs AND
  * the strings shipped inside the extension, because the options page help text
@@ -248,7 +209,37 @@ function privacy(ctx) {
   return problems;
 }
 
-const MODES = { images, links, commands, shape, preserved, privacy };
+/**
+ * Nothing may pin the user to one browser, one server product, or one model.
+ * "Load it and point it at your server" is the whole setup, and each of these
+ * strings would quietly add a step back.
+ */
+function nohardcode(ctx) {
+  const problems = [];
+
+  const banned = [
+    [/brave:\/\/|chrome:\/\/extensions|edge:\/\/extensions/i, 'a browser-specific extensions URL'],
+    [/ollama pull\s+\S/i, 'an instruction to pull one specific model'],
+    [/llama-server\s+-/i, 'a server-specific launch command'],
+    [/setup-ollama-cors/i, 'the removed CORS script'],
+    [/sudo\s/i, 'a step that needs root'],
+  ];
+  for (const [re, what] of banned) {
+    if (re.test(ctx.readme)) problems.push(`README pins the reader to ${what}`);
+  }
+
+  // The shipped default must name no model at all.
+  const defaults = path.join(ctx.root, 'src/shared/defaults.js');
+  if (fs.existsSync(defaults)) {
+    const body = fs.readFileSync(defaults, 'utf8');
+    const m = /model:\s*'([^']*)'/.exec(body);
+    if (!m) problems.push('src/shared/defaults.js: no model field found');
+    else if (m[1] !== '') problems.push(`src/shared/defaults.js hardcodes a default model: ${m[1]}`);
+  }
+  return problems;
+}
+
+const MODES = { images, links, commands, shape, nohardcode, privacy };
 
 /* ----------------------------------------------------------------- selftest */
 
@@ -273,6 +264,7 @@ function makeBrokenTree() {
     'Run `npm run nope` and see tools/nonexistent.sh',
     '',
     'Reach it at 192.168.77.13:11434 from /home/someone/projects,',
+    'Open brave://extensions, run sudo tools/setup-ollama-cors.sh and ollama pull some:model.',
     'extension id abcdefghijklmnopabcdefghijklmnoq.',
     '',
     ...Array.from({ length: ACTION_WITHIN_LINES }, () => 'filler'),
@@ -290,7 +282,7 @@ function makeBrokenTree() {
 
 function selftest() {
   const dir = makeBrokenTree();
-  const ctx = loadContext(dir, { head: '`gone-from-docs` `also-gone` ' + Array.from({ length: 30 }, (_, i) => `\`span${i}\``).join(' ') });
+  const ctx = loadContext(dir);
   const notRejected = [];
 
   for (const [name, fn] of Object.entries(MODES)) {

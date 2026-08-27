@@ -1,7 +1,9 @@
 import { PORT_NAME, MSG } from '../shared/protocol.js';
-import { getSettings } from '../shared/settings.js';
+import { getSettings, saveSettings } from '../shared/settings.js';
 import { clientFor } from '../shared/backend.js';
 import { translateText } from '../shared/translate.js';
+import { applyOriginRule } from '../shared/origin-rule.js';
+import { pickModel } from '../shared/models.js';
 
 const CONTEXT_MENU_ID = 'ollama-ar-translate-selection';
 
@@ -21,6 +23,24 @@ const PRELOAD_INTERVAL_MS = 60_000;
 let lastPreloadAt = 0;
 let lastPreloadKey = '';
 
+/**
+ * Settings with a model guaranteed present.
+ *
+ * Nothing is pulled or required at install time, so the first run has no model
+ * chosen. Rather than failing with "model not installed", ask the server what
+ * it has and keep the choice.
+ */
+async function resolveModel(settings) {
+  if (settings.model) return settings;
+
+  const models = await clientFor(settings).listModels(settings.endpoint);
+  const model = pickModel(models);
+  if (!model) return settings; // let the translate path report it
+
+  await saveSettings({ model });
+  return { ...settings, model };
+}
+
 async function maybePreload(force = false) {
   const settings = await getSettings();
   if (!settings.autoPreload && !force) return;
@@ -35,6 +55,7 @@ async function maybePreload(force = false) {
   lastPreloadAt = now;
   lastPreloadKey = key;
 
+  applyOriginRule(settings.endpoint);
   clientFor(settings).preloadModel(settings.endpoint, settings.model);
 }
 
@@ -109,7 +130,11 @@ chrome.runtime.onConnect.addListener((port) => {
     const post = (message) => safePost(port, { ...message, reqId });
 
     try {
-      const settings = await getSettings();
+      const stored = await getSettings();
+      // Cheap and idempotent, and an MV3 worker can be torn down at any point,
+      // so the rule is re-applied rather than tracked.
+      await applyOriginRule(stored.endpoint);
+      const settings = await resolveModel(stored);
 
       const result = await translateText(msg.text, settings, {
         signal: mine.signal,

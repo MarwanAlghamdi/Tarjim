@@ -118,7 +118,14 @@ async function main() {
 
   const root = page.locator('#ollama-ar-translator-root');
   await root.locator('.bubble').waitFor({ state: 'visible' });
-  await shot(page, 'bubble.png', { clip: { x: 0, y: 45, width: 1180, height: 230 } });
+
+  // Clip to the bubble's real position rather than a guessed height: the
+  // bubble sits under the selection, whose size depends on how the text wraps,
+  // and a fixed crop cut the button in half.
+  const bubble = await shadowBox(page, '.bubble', 14);
+  await shot(page, 'bubble.png', {
+    clip: { x: 0, y: 45, width: 1180, height: Math.ceil(bubble.y + bubble.height - 45) },
+  });
 
   await root.locator('.bubble').click();
   console.log('  waiting for the model (cold load can take ~25s)...');

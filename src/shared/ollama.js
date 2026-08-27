@@ -30,7 +30,8 @@ function toOllamaError(err) {
 async function errorFromResponse(res) {
   if (res.status === 403) {
     return new OllamaError(
-      "Ollama refused the extension's origin (403). Run tools/setup-ollama-cors.sh.",
+      "The server refused this request (403). Reload the extension from the "
+      + 'browser\'s extensions page and try again.',
       'cors',
     );
   }

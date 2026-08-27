@@ -32,14 +32,32 @@ function tokensFor(prompt) {
  * @param {boolean} opts.cpuOffload  report the model as mostly evicted to CPU,
  *                                   which is what Ollama does when a model does
  *                                   not fit in free VRAM.
+ * @param {boolean} opts.strictOrigin refuse any request carrying an Origin
+ *                                   header, the way a default-configured
+ *                                   Ollama refuses chrome-extension://. This
+ *                                   is the condition the DNR rule in
+ *                                   src/shared/origin-rule.js exists to defeat.
  */
-export function createOllamaStub({ port = 0, delayMs = 5, cpuOffload = false } = {}) {
+export function createOllamaStub({ port = 0, delayMs = 5, cpuOffload = false, strictOrigin = false } = {}) {
   // Every /api/generate body, so tests can assert exactly what was requested
   // (a preload has no `prompt`; a real translation does).
   const calls = [];
+  // Every Origin header seen, so a test can assert the header really was
+  // stripped rather than merely that the request happened to succeed.
+  const origins = [];
 
   const server = http.createServer((req, res) => {
     const origin = req.headers.origin;
+    origins.push(origin ?? null);
+
+    // Default Ollama validates Origin against OLLAMA_ORIGINS and answers 403
+    // when it is not on the list. Chrome omits Origin on a GET but always
+    // attaches it to a POST, so this is what made translation, and only
+    // translation, fail before the header rule existed.
+    if (strictOrigin && origin) {
+      res.writeHead(403, { ...cors(origin), 'Content-Type': 'text/plain' });
+      return res.end('Forbidden');
+    }
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204, cors(origin));
@@ -109,6 +127,7 @@ export function createOllamaStub({ port = 0, delayMs = 5, cpuOffload = false } =
   });
 
   server.calls = calls;
+  server.origins = origins;
   server.generateCalls = () => calls.filter((c) => c.prompt !== undefined);
 
   return new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve(server)));
