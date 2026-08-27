@@ -1,4 +1,4 @@
-# Tarjim ترجِم
+# Tarjim |  ترجِم
 
 Select text in your browser, get Modern Standard Arabic. The model runs on a
 server you control — nothing is sent to a third party.
