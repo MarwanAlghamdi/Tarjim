@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Ollama Arabic Translator",
+  "name": "Tarjim ترجِم",
   "version": "0.1.0",
-  "description": "Select text anywhere and translate it to Arabic with your local Ollama server.",
+  "description": "Select text anywhere and translate it to Modern Standard Arabic with your own local model server.",
   "minimum_chrome_version": "126",
   "icons": {
     "16": "src/icons/icon16.png",
@@ -15,7 +15,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Ollama Arabic Translator",
+    "default_title": "Tarjim ترجِم",
     "default_popup": "src/popup/popup.html"
   },
   "options_page": "src/options/options.html",

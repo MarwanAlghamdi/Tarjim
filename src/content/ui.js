@@ -44,7 +44,7 @@
       </button>
       <div class="panel" part="panel" hidden role="dialog" aria-label="Arabic translation">
         <div class="panel-head">
-          <span class="panel-title">Arabic</span>
+          <span class="panel-title">ترجِم</span>
           <span class="panel-actions">
             <button class="btn-copy" hidden>Copy</button>
             <button class="btn-retry" hidden>Retry</button>
@@ -171,7 +171,7 @@
     } else if (state === 'done') {
       els.copy.hidden = false;
       els.retry.hidden = false;
-      els.title.textContent = detail.model ? `Arabic · ${detail.model}` : 'Arabic';
+      els.title.textContent = detail.model ? `ترجِم · ${detail.model}` : 'ترجِم';
     } else if (state === 'passthrough') {
       els.status.hidden = false;
       els.status.textContent = 'This text is already Arabic - shown unchanged.';

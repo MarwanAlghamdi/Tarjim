@@ -1,7 +1,9 @@
-# Ollama Arabic Translator
+# Tarjim ترجِم
 
-Select text anywhere in the browser and translate it to Modern Standard Arabic
-using **your own local Ollama server**. Nothing is sent to a cloud service — the
+*Tarjim* — Arabic for **“translate”**, in the imperative. Select text anywhere in
+the browser and get Modern Standard Arabic (الفصحى) back, from **your own local
+model server** — Ollama, or anything speaking the OpenAI chat API (llama.cpp
+`llama-server`, LM Studio, vLLM). Nothing is sent to a cloud service; the
 extension only ever talks to the host you configure.
 
 Works on ordinary web pages and, via a bundled PDF.js viewer, on PDFs.

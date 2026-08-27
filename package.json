@@ -1,9 +1,9 @@
 {
-  "name": "ollama-arabic-translator",
+  "name": "tarjim",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Translate selected text to Arabic using a local Ollama server.",
+  "description": "Translate selected text to Modern Standard Arabic using a local Ollama or OpenAI-compatible server.",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
