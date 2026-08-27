@@ -16,10 +16,10 @@
         <button id="test" type="button">Test connection</button>
       </div>
       <p class="help">
-        Accepts <code>host:port</code> or a full URL — e.g. <code>192.168.1.50:11434</code>.
-        Ollama and OpenAI-compatible servers (llama.cpp <code>llama-server</code>, LM Studio,
-        vLLM) both work; which one it is is detected here. A server on another machine must be
-        started with <code>--host 0.0.0.0</code>.
+        <code>host:port</code> or a full URL — e.g. <code>192.168.1.50:11434</code>.
+        Works with Ollama and with OpenAI-compatible servers (llama.cpp, LM Studio,
+        vLLM); <b>Test connection</b> works out which one it is.
+        A server on another machine must be started with <code>--host 0.0.0.0</code>.
       </p>
       <p id="endpoint-status" class="status" role="status"></p>
     </section>
@@ -36,8 +36,8 @@
         Preload the model when text is selected
       </label>
       <p class="help">
-        Keeps the model in VRAM so the first translation is not delayed by a cold load
-        (measured at 24.5&nbsp;s for <code>gemma3:12b</code>). Turn off to free VRAM between uses.
+        Keeps the model in VRAM so the first translation is not delayed by a cold
+        load. Turn off to free VRAM between uses.
       </p>
     </section>
 
