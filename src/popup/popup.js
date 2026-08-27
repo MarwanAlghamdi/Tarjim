@@ -2,6 +2,7 @@ import { getSettings } from '../shared/settings.js';
 import { clientFor } from '../shared/backend.js';
 import { applyOriginRule } from '../shared/origin-rule.js';
 import { pickModel } from '../shared/models.js';
+import { tabIsPdf } from '../shared/pdf.js';
 import { translateText } from '../shared/translate.js';
 
 const $ = (id) => document.getElementById(id);
@@ -10,8 +11,6 @@ const el = {
   input: $('input'), go: $('go'), output: $('output'), status: $('status'),
   pdfBtn: $('open-pdf'), pdfHint: $('pdf-hint'), perfWarning: $('perf-warning'),
 };
-
-const PDF_URL = /^(https?|file):\/\/.*\.pdf(\?|#|$)/i;
 
 let settings = null;
 
@@ -58,8 +57,10 @@ el.go.addEventListener('click', async () => {
   }
 
   // Chrome's built-in PDF viewer cannot expose selection to an extension, so
-  // offer to reopen the file in the bundled PDF.js viewer instead.
-  const isPdf = PDF_URL.test(tab?.url ?? '');
+  // offer to reopen the file in the bundled PDF.js viewer instead. The tab is
+  // asked what it is rendering rather than guessed at from the URL: plenty of
+  // PDFs are served from paths with no ".pdf" in them.
+  const isPdf = tab?.id ? await tabIsPdf(tab.id, tab.url) : false;
   const alreadyInViewer = (tab?.url ?? '').includes('/src/pdfjs/web/viewer.html');
 
   if (isPdf && !alreadyInViewer) {

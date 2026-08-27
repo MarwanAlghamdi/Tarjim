@@ -31,6 +31,20 @@ const SETTINGS = {
 function createStaticServer() {
   const server = http.createServer(async (req, res) => {
     const name = path.basename(new URL(req.url, 'http://x').pathname) || 'page.html';
+
+    // "/paper" -- a real PDF at a URL with no extension, the way arXiv and
+    // most content-addressed or API-served PDFs deliver one.
+    if (name === 'paper') {
+      const body = await fs.readFile(
+        path.join(REPO, 'src/pdfjs/web/compressed.tracemonkey-pldi-09.pdf'),
+      );
+      res.writeHead(200, {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'inline; filename="paper.pdf"',
+      });
+      return res.end(body);
+    }
+
     try {
       const body = await fs.readFile(path.join(FIXTURE_DIR, name));
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
