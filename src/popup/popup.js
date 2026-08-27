@@ -1,5 +1,5 @@
 import { getSettings } from '../shared/settings.js';
-import { listModels, listLoadedModels, preloadModel } from '../shared/ollama.js';
+import { clientFor } from '../shared/backend.js';
 import { translateText } from '../shared/translate.js';
 
 const $ = (id) => document.getElementById(id);
@@ -81,15 +81,16 @@ el.go.addEventListener('click', async () => {
   }
 
   try {
-    const models = await listModels(settings.endpoint);
+    const client = clientFor(settings);
+    const models = await client.listModels(settings.endpoint);
     const present = models.some((m) => m.name === settings.model);
     el.conn.className = present ? 'dot ok' : 'dot bad';
     el.connText.textContent = present ? `${settings.model} ready` : `${settings.model} not installed`;
-    if (present && settings.autoPreload) preloadModel(settings.endpoint, settings.model);
+    if (present && settings.autoPreload) client.preloadModel(settings.endpoint, settings.model);
     await reportGpuOffload(settings);
   } catch (err) {
     el.conn.className = 'dot bad';
-    el.connText.textContent = err.kind === 'cors' ? 'Ollama refused origin' : 'Ollama unreachable';
+    el.connText.textContent = err.kind === 'cors' ? 'Ollama refused origin' : 'Server unreachable';
   }
 })();
 
@@ -99,9 +100,12 @@ el.go.addEventListener('click', async () => {
  * Ollama offloads silently when a model does not fit in free VRAM, and the
  * only symptom is a 10-30x slowdown with no error. Without this the extension
  * just looks broken.
+ *
+ * OpenAI-compatible servers expose no equivalent of /api/ps, so their client
+ * returns an empty list here and the warning simply never fires.
  */
 async function reportGpuOffload(settings) {
-  const loaded = await listLoadedModels(settings.endpoint);
+  const loaded = await clientFor(settings).listLoadedModels(settings.endpoint);
   const mine = loaded.find((m) => m.name === settings.model);
   if (!mine || !mine.mostlyOnCpu) return;
 

@@ -1,7 +1,6 @@
 import { isArabicOnly, sanitizeTranslation } from './text.js';
 import { splitIntoChunks } from './chunker.js';
-import { buildGenerateBody } from './prompt.js';
-import { streamGenerate as defaultStreamGenerate } from './ollama.js';
+import { clientFor } from './backend.js';
 
 /**
  * Translate a selection into Arabic.
@@ -14,7 +13,11 @@ export async function translateText(
   settings,
   { signal, onToken, onProgress, deps = {} } = {},
 ) {
-  const streamGenerate = deps.streamGenerate ?? defaultStreamGenerate;
+  // The client is picked from settings.backend: Ollama's /api/generate and a
+  // llama-server's /v1/chat/completions need different paths AND different
+  // body shapes, so the body builder has to travel with the stream function.
+  const client = clientFor(settings);
+  const streamGenerate = deps.streamGenerate ?? client.streamGenerate;
   const text = String(rawText ?? '').trim();
 
   if (!text) throw new Error('There is nothing to translate.');
@@ -33,7 +36,7 @@ export async function translateText(
   for (let i = 0; i < chunks.length; i += 1) {
     onProgress?.({ chunk: i + 1, total: chunks.length });
 
-    const body = buildGenerateBody({
+    const body = client.buildBody({
       model: settings.model,
       text: chunks[i],
       keepAlive: settings.keepAlive,

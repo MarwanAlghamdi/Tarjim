@@ -1,6 +1,6 @@
 import { PORT_NAME, MSG } from '../shared/protocol.js';
 import { getSettings } from '../shared/settings.js';
-import { preloadModel } from '../shared/ollama.js';
+import { clientFor } from '../shared/backend.js';
 import { translateText } from '../shared/translate.js';
 
 const CONTEXT_MENU_ID = 'ollama-ar-translate-selection';
@@ -35,7 +35,7 @@ async function maybePreload(force = false) {
   lastPreloadAt = now;
   lastPreloadKey = key;
 
-  preloadModel(settings.endpoint, settings.model);
+  clientFor(settings).preloadModel(settings.endpoint, settings.model);
 }
 
 chrome.runtime.onInstalled.addListener(() => {

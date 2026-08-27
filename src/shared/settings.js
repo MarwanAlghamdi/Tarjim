@@ -5,6 +5,11 @@ export { DEFAULT_SETTINGS };
 const DEFAULT_PORT = 11434;
 const SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
 
+/** Strip trailing slashes so `${endpoint}/api/tags` never doubles up. */
+export function normalizeEndpoint(endpoint) {
+  return String(endpoint ?? '').replace(/\/+$/, '');
+}
+
 /**
  * A hostname must be a plain DNS name, an IPv4 literal, or a bracketed IPv6
  * literal.

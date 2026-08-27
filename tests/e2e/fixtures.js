@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createOllamaStub } from '../stub/ollama-stub.js';
+import { createLlamaServerStub } from '../stub/llama-server-stub.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const FIXTURE_DIR = path.join(ROOT, 'tests/fixtures');
@@ -36,6 +37,17 @@ function createStaticServer() {
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server)));
 }
 
+/**
+ * server.close() alone only stops NEW connections -- it then waits for every
+ * existing keep-alive socket to go idle and time out, and the browser holds
+ * those open for the life of the context, which is torn down after this. That
+ * made teardown hang past the test timeout.
+ */
+function closeServer(server) {
+  server.closeAllConnections?.();
+  return new Promise((resolve) => server.close(resolve));
+}
+
 async function serviceWorker(context) {
   const [existing] = context.serviceWorkers();
   return existing ?? context.waitForEvent('serviceworker');
@@ -50,13 +62,21 @@ export const test = base.extend({
   stub: async ({ cpuOffload, streamDelayMs }, use) => {
     const server = await createOllamaStub({ port: 0, cpuOffload, delayMs: streamDelayMs });
     await use({ server, url: `http://127.0.0.1:${server.address().port}` });
-    await new Promise((r) => server.close(r));
+    await closeServer(server);
+  },
+
+  // An OpenAI-compatible server (llama.cpp) alongside the Ollama one, so a
+  // test can point the extension at it and prove the dialect switch.
+  llamaStub: async ({ streamDelayMs }, use) => {
+    const server = await createLlamaServerStub({ port: 0, delayMs: streamDelayMs });
+    await use({ server, url: `http://127.0.0.1:${server.address().port}` });
+    await closeServer(server);
   },
 
   fixtureUrl: async ({}, use) => {
     const server = await createStaticServer();
     await use(`http://127.0.0.1:${server.address().port}/page.html`);
-    await new Promise((r) => server.close(r));
+    await closeServer(server);
   },
 
   context: async ({ stub }, use) => {

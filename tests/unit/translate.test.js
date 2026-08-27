@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { translateText } from '../../src/shared/translate.js';
 import { DEFAULT_SETTINGS } from '../../src/shared/defaults.js';
+import { ndjsonResponse } from '../helpers/ndjson.js';
+import { sseResponse, delta } from '../helpers/sse.js';
 
 const settings = { ...DEFAULT_SETTINGS, maxChunkChars: 50 };
 
@@ -82,5 +84,42 @@ describe('translateText', () => {
     expect(body.model).toBe('gemma3:12b');
     expect(body.options.num_ctx).toBe(8192);
     expect(body.keep_alive).toBe('30m');
+  });
+});
+
+describe('backend routing', () => {
+  it('sends an Ollama translation to /api/generate as NDJSON', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(ndjsonResponse([
+      { response: 'الطقس جميل', done: false },
+      { response: '', done: true, done_reason: 'stop' },
+    ]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await translateText('The weather is nice.', { ...settings, backend: 'ollama' });
+
+    expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:11434/api/generate');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).prompt).toBe('The weather is nice.');
+    expect(result.text).toBe('الطقس جميل');
+  });
+
+  // The bug this routing exists for: a llama-server has no /api/generate, so
+  // before the split every translation against one 404'd.
+  it('sends an OpenAI-compatible translation to /v1/chat/completions as SSE', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(sseResponse([
+      delta('الطقس جميل'),
+      delta(null, 'stop'),
+    ]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await translateText('The weather is nice.', {
+      ...settings,
+      backend: 'openai',
+      endpoint: 'http://192.168.1.50:8081',
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe('http://192.168.1.50:8081/v1/chat/completions');
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.messages.at(-1)).toEqual({ role: 'user', content: 'The weather is nice.' });
+    expect(result.text).toBe('الطقس جميل');
   });
 });

@@ -1,4 +1,9 @@
 import { buildGenerateBody } from './prompt.js';
+import { normalizeEndpoint } from './settings.js';
+
+// Named buildBody so this module and src/shared/openai.js present the same
+// surface to src/shared/backend.js.
+export { buildGenerateBody as buildBody };
 
 /** An Ollama failure with a `kind` the UI can turn into an actionable message. */
 export class OllamaError extends Error {
@@ -7,10 +12,6 @@ export class OllamaError extends Error {
     this.name = 'OllamaError';
     this.kind = kind;
   }
-}
-
-function normalizeEndpoint(endpoint) {
-  return String(endpoint ?? '').replace(/\/+$/, '');
 }
 
 /** Translate a thrown fetch rejection into an OllamaError. */

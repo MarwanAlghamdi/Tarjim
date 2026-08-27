@@ -95,12 +95,53 @@ The result panel streams tokens as they arrive and renders right-to-left.
 
 `brave://extensions` → **Details** → **Extension options**.
 
-- **Ollama server** — accepts `host:port` (e.g. `192.168.1.50:11434`) or a
+- **Model server** — accepts `host:port` (e.g. `192.168.1.50:11434`) or a
   full URL. Any host other than localhost triggers a one-time permission
-  prompt for that origin.
-- **Model** — populated from `/api/tags`. Embedding models are hidden;
-  reasoning models are labelled *not recommended* (see below).
+  prompt for that origin. **Test connection** detects whether the address is
+  Ollama or an OpenAI-compatible server (see below).
+- **Model** — populated from `/api/tags` on Ollama, `/v1/models` otherwise.
+  Embedding models are hidden; Ollama reasoning models are labelled *not
+  recommended* (see below).
 - **Preload the model when text is selected** — on by default.
+
+---
+
+## Using llama.cpp, LM Studio or vLLM instead of Ollama
+
+Any server that speaks the OpenAI chat API works, including a bigger model on
+another machine:
+
+```bash
+llama-server -hf unsloth/Qwen3-27B-GGUF:UD-Q4_K_M --host 0.0.0.0 --port 8081
+```
+
+Then in the options page put `192.168.1.50:8081` in **Model server** and press
+**Test connection**. Nothing else changes.
+
+`--host 0.0.0.0` is required for another machine to reach it; the default
+binding is loopback-only.
+
+### Why this needs detection at all
+
+The two APIs share no paths and no body shape:
+
+| | Ollama | llama.cpp / LM Studio / vLLM |
+|---|---|---|
+| List models | `GET /api/tags` | `GET /v1/models` |
+| Generate | `POST /api/generate`, NDJSON | `POST /v1/chat/completions`, SSE |
+| Resident-model VRAM split | `GET /api/ps` | *(none)* |
+| Preload into VRAM | prompt-less `/api/generate` | *(loaded at launch)* |
+
+Pointing the extension at a `llama-server` before this existed produced
+`Cannot reach Ollama` on every request, because `/api/tags` simply 404s there.
+**Test connection** and **Save** now probe both and store the dialect in
+settings, so no round trip is spent detecting it per translation. Ollama is
+probed first, since it answers `/v1/models` too but only its native API exposes
+capabilities, preload, and the GPU-offload warning.
+
+Reasoning models are not flagged on this path: llama.cpp splits a `<think>`
+block into `delta.reasoning_content`, which the client ignores, and the request
+asks the chat template to disable thinking outright.
 
 ---
 
@@ -185,6 +226,7 @@ choice for translation.
 |---|---|---|
 | `Ollama refused the extension's origin (403)` | `OLLAMA_ORIGINS` not set | `sudo tools/setup-ollama-cors.sh` |
 | `Cannot reach Ollama` | Not running, or wrong endpoint | `systemctl status ollama`; check the options page |
+| `Nothing answered at that address` | Server down, wrong port, or bound to loopback on another machine | Start it with `--host 0.0.0.0`; check the port |
 | No bubble on a PDF | Chrome's built-in viewer cannot expose selection | Use *Open this PDF in the translator viewer* |
 | Empty translation, long delay | A `qwen3` model is selected | Switch to `gemma3:12b` in options |
 | First translation slow, later ones fast | Cold model load (~24 s for `gemma3:12b`) | Keep *Preload the model* enabled |
@@ -237,7 +279,8 @@ edge cases like a missing model or a malformed stream.
 
 ```
 manifest.json          MV3 manifest — the single source of permissions
-src/shared/            ES modules: Ollama client, prompt, chunker, settings
+src/shared/            ES modules: Ollama + OpenAI clients, backend detection,
+                       prompt, chunker, settings
 src/background/        service worker: ports, preload, context menu, PDF open
 src/content/           classic content scripts: selection + shadow-DOM UI
 src/options/           options page

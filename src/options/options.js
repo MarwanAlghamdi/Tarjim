@@ -1,5 +1,5 @@
 import { getSettings, saveSettings, parseEndpoint, DEFAULT_SETTINGS } from '../shared/settings.js';
-import { listModels, preloadModel } from '../shared/ollama.js';
+import { clientFor, detectBackend, BACKEND_LABELS } from '../shared/backend.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -16,6 +16,9 @@ const el = {
 
 /** Cached result of the last successful listModels call. */
 let knownModels = [];
+
+/** Dialect of the endpoint currently in the box; see src/shared/backend.js. */
+let backend = DEFAULT_SETTINGS.backend;
 
 function setStatus(node, message, kind = '') {
   node.textContent = message;
@@ -35,7 +38,7 @@ async function ensureHostPermission(url) {
 }
 
 async function refreshModels(endpoint, selected) {
-  knownModels = await listModels(endpoint);
+  knownModels = await clientFor({ backend }).listModels(endpoint);
 
   el.model.innerHTML = '';
   const usable = knownModels.filter((m) => !m.isEmbedding);
@@ -43,9 +46,12 @@ async function refreshModels(endpoint, selected) {
   for (const m of usable) {
     const opt = document.createElement('option');
     opt.value = m.name;
+    // /v1/models carries no size, so the parenthesis is dropped rather than
+    // rendering every llama-server model as "name ()".
+    const size = m.parameterSize ? ` (${m.parameterSize})` : '';
     opt.textContent = m.isThinking
-      ? `${m.name} (${m.parameterSize}) — reasoning model, not recommended`
-      : `${m.name} (${m.parameterSize})`;
+      ? `${m.name}${size} — reasoning model, not recommended`
+      : `${m.name}${size}`;
     el.model.appendChild(opt);
   }
 
@@ -91,9 +97,25 @@ el.test.addEventListener('click', async () => {
       return;
     }
 
+    const detected = await detectBackend(parsed.url);
+    if (!detected) {
+      setStatus(
+        el.endpointStatus,
+        'Nothing answered at that address. Start Ollama, or a llama.cpp/LM Studio '
+        + 'server bound with --host 0.0.0.0, and check the port.',
+        'error',
+      );
+      return;
+    }
+    backend = detected;
+
     const count = await refreshModels(parsed.url, el.model.value);
     el.endpoint.value = parsed.url;
-    setStatus(el.endpointStatus, `Connected — ${count} usable model(s).`, 'ok');
+    setStatus(
+      el.endpointStatus,
+      `Connected to ${BACKEND_LABELS[backend]} — ${count} usable model(s).`,
+      'ok',
+    );
   } catch (err) {
     const hint = err.kind === 'cors' ? ' Run tools/setup-ollama-cors.sh and restart Ollama.' : '';
     setStatus(el.endpointStatus, `${err.message}${hint}`, 'error');
@@ -115,15 +137,20 @@ el.save.addEventListener('click', async () => {
       return;
     }
 
+    // Re-detect rather than trusting the last Test: the box may have been
+    // edited since, and saving the wrong dialect 404s every translation.
+    backend = (await detectBackend(parsed.url)) ?? backend;
+
     const saved = await saveSettings({
       endpoint: parsed.url,
+      backend,
       model: el.model.value || DEFAULT_SETTINGS.model,
       autoPreload: el.autoPreload.checked,
     });
 
     el.endpoint.value = saved.endpoint;
     setStatus(el.saveStatus, 'Saved.', 'ok');
-    if (saved.autoPreload) preloadModel(saved.endpoint, saved.model);
+    if (saved.autoPreload) clientFor(saved).preloadModel(saved.endpoint, saved.model);
     setTimeout(() => setStatus(el.saveStatus, ''), 2500);
   } catch (err) {
     setStatus(el.saveStatus, err.message, 'error');
@@ -134,11 +161,12 @@ el.save.addEventListener('click', async () => {
   const settings = await getSettings();
   el.endpoint.value = settings.endpoint;
   el.autoPreload.checked = settings.autoPreload;
+  backend = settings.backend ?? DEFAULT_SETTINGS.backend;
 
   try {
     await refreshModels(settings.endpoint, settings.model);
   } catch {
     el.model.innerHTML = `<option value="${settings.model}">${settings.model}</option>`;
-    setStatus(el.endpointStatus, 'Could not reach Ollama — press "Test connection".', 'warn');
+    setStatus(el.endpointStatus, 'Could not reach the server — press "Test connection".', 'warn');
   }
 })();

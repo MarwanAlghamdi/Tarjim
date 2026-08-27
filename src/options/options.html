@@ -10,12 +10,17 @@
     <h1>Ollama Arabic Translator</h1>
 
     <section>
-      <label for="endpoint">Ollama server</label>
+      <label for="endpoint">Model server</label>
       <div class="row">
         <input id="endpoint" type="text" spellcheck="false" placeholder="localhost:11434">
         <button id="test" type="button">Test connection</button>
       </div>
-      <p class="help">Accepts <code>host:port</code> or a full URL — e.g. <code>192.168.1.50:11434</code>.</p>
+      <p class="help">
+        Accepts <code>host:port</code> or a full URL — e.g. <code>192.168.1.50:11434</code>.
+        Ollama and OpenAI-compatible servers (llama.cpp <code>llama-server</code>, LM Studio,
+        vLLM) both work; which one it is is detected here. A server on another machine must be
+        started with <code>--host 0.0.0.0</code>.
+      </p>
       <p id="endpoint-status" class="status" role="status"></p>
     </section>
 
