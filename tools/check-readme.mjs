@@ -269,7 +269,7 @@ function makeBrokenTree() {
     '',
     'Run `npm run nope` and see tools/nonexistent.sh',
     '',
-    'Reach it at 192.168.1.50:11434 from /home/someone/projects,',
+    'Reach it at 192.168.77.13:11434 from /home/someone/projects,',
     'extension id abcdefghijklmnopabcdefghijklmnoq.',
     '',
     ...Array.from({ length: ACTION_WITHIN_LINES }, () => 'filler'),
