@@ -6,8 +6,14 @@ import { fileURLToPath } from 'node:url';
 import { createOllamaStub } from '../stub/ollama-stub.js';
 import { createLlamaServerStub } from '../stub/llama-server-stub.js';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const FIXTURE_DIR = path.join(ROOT, 'tests/fixtures');
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+
+// tools/package.sh sets this so the whole suite runs against the staged
+// package rather than the repo -- what ships is then what was tested.
+const ROOT = process.env.EXTENSION_DIR
+  ? path.resolve(REPO, process.env.EXTENSION_DIR)
+  : REPO;
+const FIXTURE_DIR = path.join(REPO, 'tests/fixtures');
 
 const SETTINGS = {
   model: 'gemma3:12b',

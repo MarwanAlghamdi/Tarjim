@@ -71,6 +71,9 @@ Requires Chrome/Chromium **126 or newer** (Brave 1.93 is Chromium 151).
 2. Turn on **Developer mode**.
 3. **Load unpacked** → select this directory.
 
+To install a built release instead of the repo, see
+[Packaging a release](#packaging-a-release).
+
 ### 5. Optional: local PDF files
 
 To translate PDFs opened from disk (`file://`), open the extension's
@@ -105,6 +108,54 @@ The result panel streams tokens as they arrive and renders right-to-left.
   Embedding models are hidden; Ollama reasoning models are labelled *not
   recommended* (see below).
 - **Preload the model when text is selected** — on by default.
+
+---
+
+## Packaging a release
+
+```bash
+npm run package          # stage -> verify -> zip -> crx
+npm run package -- --no-verify
+```
+
+Everything lands in `dist/` (gitignored):
+
+| Artifact | Size | What it is for |
+|---|---|---|
+| `unpacked/` | 13 MB | **Load unpacked** without cloning the repo |
+| `tarjim-<v>.zip` | 4.5 MB | Unzip → *Load unpacked*; also the Web Store upload |
+| `tarjim-<v>.crx` | 4.5 MB | Signed CRX3, for drag-and-drop where the browser allows it |
+
+The stage is the whole extension minus source maps — 8.7 MB of the 22 MB tree
+that only a debugger ever reads. Nothing else is stripped, so the package is
+byte-identical in behaviour to the repo, and **the full end-to-end suite is run
+against the staged tree, not against the repo**: what ships is what was tested.
+
+### About drag-and-drop
+
+Chromium's own install policy decides this, not the package:
+
+- **Linux Chromium / Brave, Developer mode on** — dragging the `.crx` onto
+  `brave://extensions` installs it.
+- **Chrome on Windows and macOS** — off-store CRX installs are blocked outright.
+  Use the zip and *Load unpacked*, or an enterprise policy.
+
+The zip path works everywhere and needs no signature, so it is the one to hand
+someone if you only want to give them one file.
+
+### The signing key
+
+First run writes `.crx-key.pem` in the repo root (gitignored, mode 600) and
+reuses it afterwards. **Keep it.** The extension ID is derived from it — this
+key produces `the-id-derived-from-that-key` — and signing a new release with
+a different key makes the browser treat it as a different extension, so the
+user loses every saved setting instead of upgrading.
+
+Loading unpacked derives the ID from the *directory path* instead, so an
+unpacked install and a CRX install are two separate extensions with separate
+settings. Adding the public half of the key to `manifest.json` as `"key"` would
+pin both to the same ID; it is deliberately not done here, since the repo is
+loaded unpacked during development.
 
 ---
 
@@ -245,6 +296,7 @@ npm install
 npm test          # unit tests (Vitest)
 npm run test:e2e  # end-to-end tests (Playwright)
 npm run verify    # both
+npm run package   # build dist/ (runs the e2e suite against the staged tree)
 
 npm run verify:brave      # drive the REAL Brave build installed on this machine
 npm run verify:brave:live # same, but with a real translation via real Ollama
@@ -288,6 +340,7 @@ src/content/           classic content scripts: selection + shadow-DOM UI
 src/options/           options page
 src/popup/             toolbar popup
 src/pdfjs/             vendored PDF.js 6.2.108 (patched)
-tools/                 setup-ollama-cors.sh, vendor-pdfjs.sh, patch-pdfjs.py
+tools/                 package.sh, setup-ollama-cors.sh, vendor-pdfjs.sh,
+                       patch-pdfjs.py, verify-brave.mjs
 tests/                 unit (Vitest), e2e (Playwright), stub, fixtures
 ```
