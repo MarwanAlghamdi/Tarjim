@@ -37,7 +37,6 @@ already have installed is what you can pick.
 | Trigger | What you do |
 |---|---|
 | Bubble | Select text → click **Translate** |
-| Keyboard | Select text → `Alt+T` |
 | Right-click | Select text → *Translate selection to Arabic* |
 | Toolbar | Click the icon → paste text → **Translate** |
 | PDF | Toolbar icon → **Open this PDF in the translator viewer** |

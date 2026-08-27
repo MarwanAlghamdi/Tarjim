@@ -172,7 +172,7 @@ function safePost(port, message) {
 }
 
 /* ------------------------------------------------------------------ *
- * Alternative triggers: context menu and Alt+T
+ * Alternative trigger: the context menu
  * ------------------------------------------------------------------ */
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'ollama-ar-open-pdf') {
@@ -190,17 +190,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     { type: MSG.TRANSLATE, text: info.selectionText ?? '' },
     { frameId: info.frameId ?? 0 },
   ).catch(() => { /* no content script in that frame */ });
-});
-
-chrome.commands.onCommand.addListener(async (command) => {
-  if (command !== 'translate-selection') return;
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) return;
-  // No frameId here: the shortcut carries no frame context. Broadcasting is
-  // safe because a frame with no live selection ignores the message
-  // (src/content/main.js), so only the focused frame acts.
-  chrome.tabs.sendMessage(tab.id, { type: MSG.TRANSLATE })
-    .catch(() => { /* no content script on this page */ });
 });
 
 /* ------------------------------------------------------------------ *

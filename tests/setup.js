@@ -63,7 +63,6 @@ export function createChromeStub() {
     tabs: { query: vi.fn(async () => []), create: vi.fn(async () => ({ id: 1 })), update: vi.fn(), sendMessage: vi.fn() },
     scripting: { executeScript: vi.fn(async () => [{ result: '' }]) },
     action: { onClicked: { addListener: vi.fn() } },
-    commands: { onCommand: { addListener: vi.fn() } },
     extension: { isAllowedFileSchemeAccess: vi.fn(async () => false) },
   };
 }

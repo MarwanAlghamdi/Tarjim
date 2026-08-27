@@ -190,18 +190,16 @@
   });
   ui.onCopyClick(() => navigator.clipboard.writeText(ui.getText()).catch(() => {}));
 
-  /* ---------------- context menu / Alt+T ---------------- */
+  /* ---------------- context menu ---------------- */
 
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg?.type !== MSG.TRANSLATE) return;
 
     const selection = currentSelection();
 
-    // The Alt+T shortcut has no frame context, so the worker broadcasts it to
-    // every frame. Only the frame that actually holds the selection may act --
-    // otherwise a page with iframes opens one panel and starts one full
-    // generation per frame. (The context-menu path is frame-targeted by the
-    // worker, and always supplies msg.text.)
+    // The worker targets the exact frame that was right-clicked and always
+    // supplies msg.text. The selection is still read so the panel can be
+    // positioned next to it, and a frame with neither is not ours to act on.
     if (!selection && !msg.text) return;
 
     const text = msg.text || selection?.text || '';
