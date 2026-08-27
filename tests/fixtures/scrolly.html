@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>Scrolling fixture</title>
+  <style>
+    #inner { height: 60px; overflow: auto; border: 1px solid #ccc; }
+    #tall { height: 3000px; }
+  </style>
+</head>
+<body>
+  <h1>Scrolling host page</h1>
+  <!-- Mixed CJK, Latin, punctuation and an emoji, as reported. -->
+  <p id="mixed">📌 文档结构（2026-07-22 起）： 本文件是中文默认入口 —— banner + badges + 信任面 + 9 阶段流水线速览 + 76 行合集总表。 每个合集的完整描述、按用途分组、精确数字、验证方法在 docs/CONTENT_ZH.md（扩展正文，总表行内的 → 直接跳转到对应锚点）。</p>
+  <!-- Stands in for anything on a real page that scrolls on its own. -->
+  <div id="inner"><div style="height:400px">unrelated scrollable region</div></div>
+  <div id="tall"></div>
+</body>
+</html>

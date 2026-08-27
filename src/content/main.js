@@ -134,7 +134,37 @@
     if (event.key === 'Escape') stopAndClose();
   });
 
-  window.addEventListener('scroll', () => ui.hideBubble(), { passive: true, capture: true });
+  /**
+   * Follow the selection on scroll rather than dismissing.
+   *
+   * capture:true on window means this fires for EVERY scrollable element on the
+   * page, not just the document -- scroll does not bubble, but it does reach
+   * window in the capture phase. Hiding on any of them meant a sticky header
+   * script, a lazy-loaded image shifting layout, smooth-scroll momentum, or the
+   * auto-scroll of the very drag that made the selection all dismissed the
+   * bubble before the user could click it. Measured: a 5px window scroll with
+   * the selection still fully on screen was enough.
+   *
+   * The bubble is position:fixed, so it has to be re-placed against the live
+   * selection rect; it is only hidden once that selection is gone or has
+   * scrolled out of the viewport.
+   */
+  window.addEventListener('scroll', () => {
+    const selection = currentSelection();
+    if (!selection) {
+      ui.hideBubble();
+      return;
+    }
+
+    const { rect } = selection;
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      ui.hideBubble();
+      return;
+    }
+
+    lastRect = rect;
+    ui.repositionBubble(rect);
+  }, { passive: true, capture: true });
 
   /* ---------------- run ---------------- */
 

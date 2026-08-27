@@ -118,6 +118,12 @@
     if (els) els.bubble.hidden = true;
   }
 
+  /** Move a bubble that is already up. A no-op when it is not. */
+  function repositionBubble(rect) {
+    if (!els || els.bubble.hidden) return;
+    place(els.bubble, rect, els.bubble.offsetWidth || 110, els.bubble.offsetHeight || 30);
+  }
+
   function openPanel(rect) {
     mount();
     hideBubble();
@@ -188,6 +194,7 @@
     mount,
     showBubble,
     hideBubble,
+    repositionBubble,
     openPanel,
     closePanel,
     appendToken,

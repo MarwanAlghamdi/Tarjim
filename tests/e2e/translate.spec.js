@@ -111,3 +111,50 @@ test.describe('when the model does not fit in VRAM', () => {
     await expect(warning).toContainText('mostly on the CPU');
   });
 });
+
+/**
+ * Regression: every scrollable element on a page reaches this listener in the
+ * capture phase, and the old handler hid the bubble on any of them. On a real
+ * site -- sticky header, lazy images, drag-select auto-scroll -- the bubble
+ * vanished before it could be clicked, which read as "selection does nothing".
+ */
+test.describe('a selection on a page that scrolls', () => {
+  const scrollyUrl = (fixtureUrl) => fixtureUrl.replace('page.html', 'scrolly.html');
+
+  async function selectMixed(page) {
+    const box = await page.locator('#mixed').boundingBox();
+    await page.mouse.move(box.x + 2, box.y + 4);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 2, box.y + box.height - 4, { steps: 12 });
+    await page.mouse.up();
+  }
+
+  test('survives an unrelated pane scrolling, and still translates', async ({ context, fixtureUrl }) => {
+    const page = await context.newPage();
+    await page.goto(scrollyUrl(fixtureUrl));
+    await selectMixed(page);
+
+    const root = page.locator('#ollama-ar-translator-root');
+    const bubble = root.locator('.bubble');
+    await expect(bubble).toBeVisible();
+
+    await page.evaluate(() => { document.getElementById('inner').scrollTop = 100; });
+    await page.evaluate(() => window.scrollBy(0, 5));
+    await expect(bubble).toBeVisible();
+
+    await bubble.click();
+    await expect(root.locator('.panel-body')).toContainText('ترجمة', { timeout: 15_000 });
+  });
+
+  test('is dismissed once the selection scrolls out of the viewport', async ({ context, fixtureUrl }) => {
+    const page = await context.newPage();
+    await page.goto(scrollyUrl(fixtureUrl));
+    await selectMixed(page);
+
+    const bubble = page.locator('#ollama-ar-translator-root').locator('.bubble');
+    await expect(bubble).toBeVisible();
+
+    await page.evaluate(() => window.scrollBy(0, 2000));
+    await expect(bubble).toBeHidden();
+  });
+});
